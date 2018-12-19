@@ -1,0 +1,5 @@
+List of links of resources 
+
+1. Conversational Chatbot 
+    a. Seq2Seq in under 200 lines 
+        https://github.com/tensorlayer/seq2seq-chatbot/blob/master/main.py

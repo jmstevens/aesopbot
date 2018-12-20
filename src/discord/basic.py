@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 import random
-from src.models.giphy import Gif
+from src.discord.giphy import Gif
 import json
 import sys
 import os
@@ -129,7 +129,7 @@ async def freestyle(term: str, bars: int):
 #     except FileNotFoundError:
 #         await bot.say("No audiofile found! Please use the freestyle command to generate text")
 
-with open('src/models/config.json','r') as cfgFile:
+with open('configs/config.json','r') as cfgFile:
     cfg = json.load(cfgFile)['discord']
 
 bot.run(cfg['token'])

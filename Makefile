@@ -96,7 +96,7 @@ train:
 
 # Make predictions
 launch_bot:
-	$(PYTHON_INTERPRETER) -m src.models.basic
+	$(PYTHON_INTERPRETER) -m src.discord.basic
 
 ## Test python environment is setup correctly
 test_environment:

@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 def loadConfig():
     global cfg
     try:
-        with open('src/models/config.json','r') as cfgFile:
+        with open('configs/config.json','r') as cfgFile:
             try:
                 cfg = json.load(cfgFile)
                 logger.info("config.json loaded")

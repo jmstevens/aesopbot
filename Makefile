@@ -37,8 +37,8 @@ clean:
 	rm -rf src/data/tensorboard/*
 	rm -rf src/data/*.ckpt*
 	rm -rf src/data/checkpoint
-
-	> src/data/output.txt
+  # rm data/raw/artist_lyrics.json
+	rm data/processed/*.txt
 
 clean_data:
 	# rm -rf data/raw/*
@@ -83,12 +83,15 @@ else
 	@echo ">>> New virtualenv created. Activate with:\nworkon $(PROJECT_NAME)"
 endif
 
-# Transform data
-transform_aesop:
-	$(PYTHON_INTERPRETER) -c "from src.features.build import Dataset; Dataset().save_artist('aesop-rock')"
+# Get Data
+get_data:
+	$(PYTHON_INTERPRETER) -c "import src.features.get_data as _b; _b.main()"
 
+# Transform data
 transform:
-	$(PYTHON_INTERPRETER) -c "from src.features.build import Dataset; Dataset().save_artist()"
+	$(PYTHON_INTERPRETER) -c "import src.features.transform_data as _t; _t.main()"
+# transform:
+# 	$(PYTHON_INTERPRETER) -c "from src.features.build import Dataset; Dataset().save_artist()"
 
 # Train model
 train:

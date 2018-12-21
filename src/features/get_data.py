@@ -20,3 +20,11 @@ class Build():
 
     def save(self):
         self.genius.save_artists(self.artists)
+
+def main():
+    with open('configs/config.json','r') as cfgFile:
+        cfg = json.load(cfgFile)['artists']
+
+    b = Build(cfg)
+    b.build_artist()
+    b.save()

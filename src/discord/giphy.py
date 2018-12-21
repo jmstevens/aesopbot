@@ -6,7 +6,7 @@ import json
 import random as r
 # create an instance of the API class
 api_instance = giphy_client.DefaultApi()
-with open('src/models/config.json') as f:
+with open('configs/config.json') as f:
     config = json.load(f)
 api_key = config["giphy"]["apikey"] # str | Giphy API Key
 

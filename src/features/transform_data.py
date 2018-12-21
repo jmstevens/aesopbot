@@ -2,20 +2,10 @@ from src.features.genius.api import API, Genius
 from configs import config
 from src.features.genius.artist import Artist
 from src.features.genius.song import Song
+from src.features.genius.song import Song
 import json
+import pickle
 
-with open('configs/config.json','r') as cfgFile:
-    cfg = json.load(cfgFile)['genius']
-
-
-Genius = api.Genius(cfg['client_access_token'])
-aesop = Genius.search_artist('Flatbush Zombies')
-
-
-flatbush = json.loads('data/raw/lyrics.json')
-# flatbush.keys()
-
-print(aesop.__dict__)
 
 class Transform():
     def __init__(self):
@@ -91,5 +81,14 @@ class Transform():
                 else:
                     verse = verse + ' ' + j
                 verses.append(verse.lstrip())
+        verses = [i.replace('-----protools----- <eol>','') for i in verses if '<eov>' in i]
         self.verses = verses
         return verses
+
+    def save(self):
+        with open("data/processed/verses.txt", "wb") as fp:   #Pickling
+            pickle.dump(self.verses, fp)
+
+def main():
+    _t = Transform()
+    _t.save()

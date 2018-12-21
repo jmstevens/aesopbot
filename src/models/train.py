@@ -1,6 +1,6 @@
 import sys
 import os
-from src.features.build import Dataset, Provider
+from src.features.build import Provider
 from src.models.rnn_model import RNNModel #.rnn_model import RNNModel
 from tensorflow.contrib.tensorboard.plugins import projector
 import sys
@@ -22,7 +22,7 @@ output.close()
 
 class Freestyle:
     BATCH_SIZE = 25
-    SEQUENCE_LENGTH = 12
+    SEQUENCE_LENGTH = 250
     STARTER_LEARNING_RATE = 0.001
     DECAY_RATE = 0.95
     HIDDEN_LAYER_SIZE = 512

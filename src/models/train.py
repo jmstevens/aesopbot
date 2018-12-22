@@ -11,6 +11,7 @@ import copy
 from tqdm import tqdm
 import glob
 import csv
+import json
 
 data_dir = "src/data"
 tensorboard_dir = data_dir + "/tensorboard/" + str(time.strftime("%Y-%m-%d"))
@@ -21,16 +22,19 @@ output.close()
 
 
 class Freestyle:
-    BATCH_SIZE = 25
-    SEQUENCE_LENGTH = 250
-    STARTER_LEARNING_RATE = 0.001
-    DECAY_RATE = 0.95
-    HIDDEN_LAYER_SIZE = 512
-    CELLS_SIZE = 2
-    TRAIN_KEEP_PROB = 0.2
-    GRADIENT_CLIP = 5.
-    USE_PEEPHOLES = False
-    TOTAL_EPOCHS = 1000
+    with open('configs/config.json','r') as cfgFile:
+        cfg = json.load(cfgFile)
+
+    BATCH_SIZE = cfg["model_params"]["LSTM"]["BATCH_SIZE"]
+    SEQUENCE_LENGTH = cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"]
+    STARTER_LEARNING_RATE = cfg["model_params"]["LSTM"]["STARTER_LEARNING_RATE"]
+    DECAY_RATE = cfg["model_params"]["LSTM"]["DECAY_RATE"]
+    HIDDEN_LAYER_SIZE = cfg["model_params"]["LSTM"]["HIDDEN_LAYER_SIZE"]
+    CELLS_SIZE = cfg["model_params"]["LSTM"]["CELLS_SIZE"]
+    TRAIN_KEEP_PROB = cfg["model_params"]["LSTM"]["TRAIN_KEEP_PROB"]
+    GRADIENT_CLIP = cfg["model_params"]["LSTM"]["GRADIENT_CLIP"]
+    USE_PEEPHOLES = cfg["model_params"]["LSTM"]["USE_PEEPHOLES"]
+    TOTAL_EPOCHS = cfg["model_params"]["LSTM"]["TOTAL_EPOCHS"]
     # DROPOUT = 0.9
 
     TEXT_SAMPLE_LENGTH = 500
@@ -101,11 +105,11 @@ class Freestyle:
                 inputs, targets = self.provider.next_batch()
                 feed_dict = {self.model.input_data: inputs, self.model.targets: targets}
                 summary, global_step, loss, accuracy, _ = self.sess.run([summaries,
-                                                                            self.model.global_step,
-                                                                            self.model.loss,
-                                                                            self.model.accuracy,
-                                                                            self.model.train_op],
-                                                                         feed_dict=feed_dict)
+                                                                         self.model.global_step,
+                                                                         self.model.loss,
+                                                                         self.model.accuracy,
+                                                                         self.model.train_op],
+                                                                        feed_dict=feed_dict)
                 bar.set_description("Epoch:{0} | Global Step:{1} | Batch Number: {2} | Loss: {3} | Accuracy: {4}".format(epoch, global_step, batch, loss, accuracy))
                 bar.refresh()
                 writer.add_summary(summary, global_step)

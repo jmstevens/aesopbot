@@ -80,7 +80,6 @@ snowballstemmer==1.2.1
 spacy==2.0.17
 Sphinx==1.8.2
 sphinxcontrib-websupport==1.1.0
--e git+https://github.com/jmstevens/aesopbot.git@4f87d7b2253ae3c911db858e1dc7e7db1f2d8467#egg=src
 tensorboard==1.12.0
 tensorflow==1.12.0
 termcolor==1.1.0

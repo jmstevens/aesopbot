@@ -5,6 +5,7 @@ from tensorflow.contrib.legacy_seq2seq.python.ops import seq2seq
 import pronouncing
 from tqdm import tqdm
 import re
+import math
 
 
 class RNNModel:
@@ -82,8 +83,13 @@ class RNNModel:
         lstm_outputs = tf.reshape(tf.concat(lstm_outputs_split, 1), [-1, self.hidden_layer_size])
 
         # Calculate logits
+        # output, self.new_state = tf.nn.dynamic_rnn(self.cell, self.embeddings, initial_state=self.initial_state)
+        # logits = tf.contrib.layers.fully_connected(lstm_outputs, self.hidden_layer_size, activation_fn=None)
+
+
         logits = tf.matmul(lstm_outputs, self.weights) + self.bias
         self.probabilities = tf.nn.softmax(logits)
+
 
         # Train
         total_loss = seq2seq.sequence_loss_by_example([logits],
@@ -100,9 +106,11 @@ class RNNModel:
 
         self.learning_rate = tf.train.exponential_decay(self.starter_learning_rate, self.global_step,
                                            1000, 0.96, staircase=True)
+        trainable_vars = tf.trainable_variables()
+        grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, trainable_vars), self.gradient_clip)
 
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-
+        self.train_op = self.optimizer.apply_gradients(zip(grads, trainable_vars))
         self.train_op = self.optimizer.minimize(self.loss,
                                                 global_step=self.global_step,
                                                 name='train_op')
@@ -115,6 +123,24 @@ class RNNModel:
         tf.summary.scalar("loss", self.loss)
         tf.summary.scalar("learning_rate", self.learning_rate)
         tf.summary.scalar("accuracy", self.accuracy)
+
+    @staticmethod
+    def beam_search_decoder(data, k):
+        sequences = [[list(), 1.0]]
+        # walk over each step in sequence
+        for row in data.tolist():
+            all_candidates = list()
+            # expand each current candidate
+            for i in range(len(sequences)):
+                seq, score = sequences[i]
+                for j in range(len(row)):
+                    candidate = [seq + [j], score * -log(row[j])]
+                    all_candidates.append(candidate)
+                    # order all candidates by score
+                    ordered = sorted(all_candidates, key=lambda tup:tup[1])
+                    # select k best
+                    sequences = ordered[:k]
+        return sequences
 
     def generate(self, num_out=50, priming_text=None, sample=True):
         # if no priming text is supplied, get a random word to start off the
@@ -154,17 +180,23 @@ class RNNModel:
             feed_dict = {self.input_data: input_i, self.initial_state: state}
             probs, state = self.sess.run([self.probabilities, self.final_state], feed_dict=feed_dict)
             probs = probs[0]
+            # probs = self.beam_search_decoder(probs, 5)
+            # print(probs)
+            total_sum = np.cumsum(probs)
+            sum = np.sum(probs)
+            gen_word_i = int(np.searchsorted(total_sum, np.random.rand(1) * sum))
 
-            probs /= probs.sum()
-            # print(np.arange(len(probs)))
-            # select index of new word
-            if sample:
-                gen_word_i = np.random.choice(np.arange(len(probs)), p=probs)
-            else:
-                gen_word_i = np.argmax(probs)
+            # probs /= probs.sum()
+            # # print(np.arange(len(probs)))
+            # # select index of new word
+            # if sample:
+            #     gen_word_i = np.random.choice(np.arange(len(probs)), p=probs)
+            # else:
+            #     gen_word_i = np.argmax(probs)
 
             # append new word
-            gen_word = self.vocabulary_inverse[gen_word_i]
+            gen_word = tuple(self.vocabulary.keys())[gen_word_i]
+            # print(gen_word)
 
             gen_seq += ' ' + gen_word
 
@@ -215,8 +247,10 @@ class RNNModel:
             #
             # if counter == 24:
             #     counter = 0
+        gen_seq = gen_seq.replace('<eol>','\n').replace('<eov','\n').lstrip()
+        # generated_text = ' \n'.join(gen_seq.split('\n'))
+        return gen_seq
 
-        return ' \n'.join(gen_seq.split('\n'))
 
     @staticmethod
     def break_apart(sep, step, f):

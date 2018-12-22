@@ -34,21 +34,30 @@ from nltk import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import LancasterStemmer, WordNetLemmatizer
 import pickle
+import json
 
 # word_vectors = api.load("glove-wiki-gigaword-100")
 class Provider():
     data_dir = 'data/processed/verses.txt'
+    with open('configs/config.json','r') as cfgFile:
+        cfg = json.load(cfgFile)
     def __init__(self, batch_size, sequence_length):
         with open(self.data_dir, "rb") as fp:   # Unpickling
-            self.lyrics = pickle.load(fp)
+            lyrics = pickle.load(fp)
+        lyrics = [self.remove_non_ascii(i) for i in lyrics]
+        lyrics = [self.replace_numbers(i) for i in lyrics]
+        lyrics = [self.remove_punctuation(i) for i in lyrics]
+        lyrics = [''.join(i).replace("eol","<eol>").replace("eov","<eov") for i in lyrics]
+        self.lyrics = lyrics
         self.batch_size = batch_size
         self.sequence_length = sequence_length
         self.pointer = 0
         # self.new_sequence()
-        # count_pairs = sorted(collections.Counter(data).items(), key=lambda x: -x[1])
-        count_pairs = sorted(collections.Counter(' '.join([' '.join(i) for i in self.lyrics]).split(' ')).items(), key=lambda x: -x[1])
+        count_pairs = sorted(collections.Counter(' '.join(self.lyrics).split()).items(), key=lambda x: -x[1])
+        # count_pairs = sorted(collections.Counter(' '.join([' '.join(i) for i in self.lyrics]).split(' ')).items(), key=lambda x: -x[1])
         self.pointer = 0
-        data = ' '.join([' '.join(i) for i in self.lyrics]).split(' ')
+        # data = ' '.join([' '.join(i) for i in self.lyrics]).split(' ')
+        data = ' '.join(self.lyrics).split()
         self.chars, _ = zip(*count_pairs)
         self.vocabulary_size = len(self.chars)
         self.vocabulary = dict(zip(self.chars, range(len(self.chars))))
@@ -77,6 +86,38 @@ class Provider():
 
     def reset_batch_pointer(self):
             self.pointer = 0
+
+    @classmethod
+    def remove_non_ascii(self, words):
+        """Remove non-ASCII characters from list of tokenized words"""
+        new_words = []
+        for word in words:
+            new_word = unicodedata.normalize('NFKD', word).encode('ascii', 'ignore').decode('utf-8', 'ignore')
+            new_words.append(new_word)
+        return new_words
+
+    @classmethod
+    def replace_numbers(self, words):
+        """Replace all interger occurrences in list of tokenized words with textual representation"""
+        p = inflect.engine()
+        new_words = []
+        for word in words:
+            if word.isdigit():
+                new_word = p.number_to_words(word)
+                new_words.append(new_word)
+            else:
+                new_words.append(word)
+        return new_words
+
+    @classmethod
+    def remove_punctuation(self, words):
+        """Remove punctuation from list of tokenized words"""
+        new_words = []
+        for word in words:
+            new_word = re.sub(r'[^\w\s]', '', word)
+            if new_word != '':
+                new_words.append(new_word)
+        return new_words
 
 #
 #

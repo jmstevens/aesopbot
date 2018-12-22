@@ -7,6 +7,7 @@ import sys
 import os
 import tensorflow as tf
 import boto3
+import json
 
 from src.models.rnn_model import RNNModel
 from src.features.build import Provider
@@ -101,23 +102,24 @@ async def freestyle(term: str, bars: int):
     vocabulary = data_reader.vocabulary
     sess = tf.Session()
     model = RNNModel(sess,
-                     vocabulary,
-                     10,
-                     25,
-                     512,
-                     2,
-                     use_peepholes=False,
-                     training=False)
+                     vocabulary=vocabulary,
+                     batch_size=cfg["model_params"]["LSTM"]["BATCH_SIZE"],
+                     sequence_length=cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"],
+                     hidden_layer_size=cfg["model_params"]["LSTM"]["HIDDEN_LAYER_SIZE"],
+                     cells_size=cfg["model_params"]["LSTM"]["CELLS_SIZE"],
+                     keep_prob=cfg["model_params"]["LSTM"]["TRAIN_KEEP_PROB"],
+                     gradient_clip=cfg["model_params"]["LSTM"]["GRADIENT_CLIP"],
+                     starter_learning_rate=cfg["model_params"]["LSTM"]["STARTER_LEARNING_RATE"],
+                     use_peepholes=cfg["model_params"]["LSTM"]["USE_PEEPHOLES"],
+                     training=False
+                     )
 
     saver = tf.train.Saver()
     sess.run(tf.global_variables_initializer())
-    # try:
     _num = str(max([int(i.replace('ckpt-','')) for i in list(set([i.split('.')[1] for i in os.listdir("src/data") if 'aesop.ckpt-' in i]))]))
-    print(_num)
     saver.restore(sess, "src/data/aesop.ckpt-{}".format(_num))
     sample = model.generate(priming_text=term, sample=True, num_out=num_out)
-    sample.replace('\n\n','')
-    # sample = "\n".join([i.lstrip() for i in sample.split("\n")])
+    sample = '\n'.join([' '.join(i.split()) for i in sample.split('\n')])
     await bot.say(sample)
 
 # @bot.command()
@@ -130,6 +132,6 @@ async def freestyle(term: str, bars: int):
 #         await bot.say("No audiofile found! Please use the freestyle command to generate text")
 
 with open('configs/config.json','r') as cfgFile:
-    cfg = json.load(cfgFile)['discord']
-
-bot.run(cfg['token'])
+    cfg = json.load(cfgFile)
+    # discord_params = cfg['discord']['token']
+bot.run(cfg['discord']['token'])

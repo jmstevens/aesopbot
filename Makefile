@@ -38,7 +38,7 @@ clean:
 	rm -rf src/data/*.ckpt*
 	rm -rf src/data/checkpoint
   # rm data/raw/artist_lyrics.json
-	rm data/processed/*.txt
+	# rm data/processed/*.txt
 
 clean_data:
 	# rm -rf data/raw/*

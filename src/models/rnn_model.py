@@ -46,7 +46,7 @@ class RNNModel:
             self.sequence_length = 1
 
         # Build LSTM
-        cells = [rnn.LSTMCell(self.hidden_layer_size, use_peepholes=self.use_peepholes) for _ in range(self.cells_size)]
+        cells = [rnn.GRUCell(self.hidden_layer_size, name='Layer_{}'.format(i)) for i in range(self.cells_size)]
         cell_drop = [rnn.DropoutWrapper(cell, input_keep_prob=self.keep_prob) for cell in cells]
         self.cell = rnn.MultiRNNCell(cell_drop)
 
@@ -103,14 +103,14 @@ class RNNModel:
         self.accuracy=tf.cast(correct_prediction,tf.float32)
 
         self.global_step = tf.Variable(0, trainable=False, name='global_step')
-
         self.learning_rate = tf.train.exponential_decay(self.starter_learning_rate, self.global_step,
                                            1000, 0.96, staircase=True)
-        trainable_vars = tf.trainable_variables()
-        grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, trainable_vars), self.gradient_clip)
+
+        # trainable_vars = tf.trainable_variables()
+        # grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, trainable_vars), self.gradient_clip)
 
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-        self.train_op = self.optimizer.apply_gradients(zip(grads, trainable_vars))
+        # self.train_op = self.optimizer.apply_gradients(zip(grads, trainable_vars))
         self.train_op = self.optimizer.minimize(self.loss,
                                                 global_step=self.global_step,
                                                 name='train_op')
@@ -143,115 +143,46 @@ class RNNModel:
         return sequences
 
     def generate(self, num_out=50, priming_text=None, sample=True):
-        # if no priming text is supplied, get a random word to start off the
-        # magic.
+        seq_i = []
         state = self.sess.run(self.cell.zero_state(1, tf.float32))
         if priming_text is None:
             prime = np.random.choice(self.vocabulary)
         else:
             prime = priming_text
-
         # Prime the model]
         word = prime
-
         try:
             lastword_i = self.vocabulary[word]
-
         except KeyError:
-            # print(self.vocabulary.keys())
-            # print(list(self.vocabulary.keys()))
             word = np.random.choice(list(self.vocabulary.keys()))
-            # print(word)
             lastword_i = self.vocabulary[word]
-
+        seqi = [[lastword_i]]
         input_i = np.array([[lastword_i]])
-
         feed_dict = {self.input_data: input_i, self.initial_state: state}
         state = self.sess.run(self.final_state, feed_dict=feed_dict)
 
         # Generate the text
         gen_seq = prime
-        # lastword_rhymes = pronouncing.rhymes(prime)
         counter = 0
         for i in tqdm(range(1, num_out + 1)):
-
             # generate word probabilities
             input_i = np.array([[lastword_i]])
-            feed_dict = {self.input_data: input_i, self.initial_state: state}
+            # input_i = np.array(seq_i.append(lastword_i))
+            # print(input_i)
             probs, state = self.sess.run([self.probabilities, self.final_state], feed_dict=feed_dict)
+            feed_dict = {self.input_data: input_i, self.initial_state: state}
             probs = probs[0]
             # probs = self.beam_search_decoder(probs, 5)
             # print(probs)
             total_sum = np.cumsum(probs)
             sum = np.sum(probs)
             gen_word_i = int(np.searchsorted(total_sum, np.random.rand(1) * sum))
-
-            # probs /= probs.sum()
-            # # print(np.arange(len(probs)))
-            # # select index of new word
-            # if sample:
-            #     gen_word_i = np.random.choice(np.arange(len(probs)), p=probs)
-            # else:
-            #     gen_word_i = np.argmax(probs)
-
-            # append new word
             gen_word = tuple(self.vocabulary.keys())[gen_word_i]
-            # print(gen_word)
 
             gen_seq += ' ' + gen_word
 
             lastword_i = gen_word_i
+            # input_i = np.array(seq_i.append(gen_word_i))
 
-            # probs /= probs.sum()
-
-            # if counter == 24 and lastword_rhymes:
-            #     rhymes_list_i = [self.vocabulary[i] for i in lastword_rhymes if i in list(self.vocabulary.keys())]
-            #     print("List of rhymes in the vocabulary {}".format(rhymes_list_i))
-            #     if rhymes_list_i:
-            #         # probs_up = {}
-            #         probs_up = np.take(probs, rhymes_list_i)
-            #         gen_word_i = rhymes_list_i[np.argmax(np.random.choice(probs_up, 3))]
-            #         # gen_word_i = rhymes_list_i[np.argmax(probs_up)]
-            #
-            #         # gen_seq = gen_seq + '\n'
-            #         lastword_i_bar = lastword_i
-            #         lastword_rhymes = pronouncing.rhymes(gen_word)
-            #     else:
-            #         gen_word_i = np.argmax(probs)
-            #         # gen_word_i = np.random.choice(np.arange(3, p=probs.argsort()[-3:][::-1]))
-            #
-            #     gen_word = self.vocabulary_inverse[gen_word_i]
-            #     print("generated word {}".format(gen_word))
-            #     gen_seq += ' ' + gen_word
-            #     lastword_i = gen_word_i
-            #
-            #     # gen_seq = gen_seq + '\n'
-            #     lastword_i_bar = lastword_i
-            #     lastword_rhymes = pronouncing.rhymes(gen_word)
-            #
-            # else:
-            #     gen_word_i = np.argmax(probs)
-            #     gen_word = self.vocabulary_inverse[gen_word_i]
-            #     gen_seq += ' ' + gen_word
-            #     lastword_i = gen_word_i
-            #
-            # if counter == 12:
-            #     print(gen_word.split('\n'))
-            #     gen_word = gen_word.split('\n')[-1]
-            #     gen_word = re.sub('[\W_]','',gen_word)
-            #     print("generated word prior {}".format(gen_word))
-            #     lastword_rhymes = pronouncing.rhymes(gen_word)
-            #     print("last word rhymes prior {}".format(lastword_rhymes))
-            #     last_word_to_rhyme = gen_word
-            #     # gen_seq = gen_seq + '\n'
-            #
-            # if counter == 24:
-            #     counter = 0
         gen_seq = gen_seq.replace('<eol>','\n').replace('<eov','\n').lstrip()
-        # generated_text = ' \n'.join(gen_seq.split('\n'))
         return gen_seq
-
-
-    @staticmethod
-    def break_apart(sep, step, f):
-        return sep.join(f[n:n + step] for n in range(0, len(f), step))

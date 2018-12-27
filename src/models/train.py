@@ -66,7 +66,7 @@ class Freestyle:
                               self.TRAIN_KEEP_PROB,
                               self.GRADIENT_CLIP,
                               self.STARTER_LEARNING_RATE,
-                              self.USE_PEEPHOLES,
+                              self.DECAY_RATE,
                               self.training
                               )
 
@@ -99,8 +99,7 @@ class Freestyle:
         # while True:
         for epoch in range(1, self.TOTAL_EPOCHS + 1):
             bar = tqdm(range(1, self.provider.batches_size + 1))
-            self.provider = Provider(self.BATCH_SIZE, self.SEQUENCE_LENGTH)
-            # self.provider.reset_batch_pointer()
+            self.provider.reset_batch_pointer()
             for batch in bar:
                 inputs, targets = self.provider.next_batch()
                 feed_dict = {self.model.input_data: inputs, self.model.targets: targets}
@@ -127,18 +126,10 @@ class Freestyle:
             temp_losses = []
 
             # embedding_conf.tensor_name = embeddings
-            # writer.add_summary(summary, global_step)
+            writer.add_summary(summary, global_step)
             print("Saving model......")
             self.saver.save(self.sess, self.save_dir, global_step=global_step)
-            meta = [i for i in os.listdir(self.data_dir) if '.meta' in i][0]
-            config = projector.ProjectorConfig()
-            # One can add multiple embeddings.
-            embedding = config.embeddings.add()
-            # embedding.tensor_name = summary.name
-            # Link this tensor to its metadata file (e.g. labels).
-            embedding.metadata_path = os.path.join(self.save_dir, meta)
-            # Saves a config file that TensorBoard will read during startup.
-            projector.visualize_embeddings(tf.summary.FileWriter(self.save_dir), config)
+
 
     def test(self, prime_text):
         sample = self.model.generate(priming_text=prime_text)

@@ -57,7 +57,9 @@ class Provider():
         # count_pairs = sorted(collections.Counter(' '.join([' '.join(i) for i in self.lyrics]).split(' ')).items(), key=lambda x: -x[1])
         self.pointer = 0
         # data = ' '.join([' '.join(i) for i in self.lyrics]).split(' ')
-        data = ' '.join(self.lyrics).split()
+        data_shuff = self.lyrics
+        shuffle(data_shuff)
+        data = ' '.join(data_shuff).split()
         self.chars, _ = zip(*count_pairs)
         self.vocabulary_size = len(self.chars)
         self.vocabulary = dict(zip(self.chars, range(len(self.chars))))

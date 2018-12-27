@@ -17,10 +17,10 @@ class RNNModel:
                  sequence_length,
                  hidden_layer_size,
                  cells_size,
-                 keep_prob=0.6,
-                 gradient_clip=5.,
-                 starter_learning_rate=0.01,
-                 use_peepholes = False,
+                 keep_prob,
+                 gradient_clip,
+                 starter_learning_rate,
+                 decay_rate,
                  training=True):
 
         self.sess = sess
@@ -34,7 +34,7 @@ class RNNModel:
         self.keep_prob = keep_prob
         self.gradient_clip = gradient_clip
         self.starter_learning_rate = starter_learning_rate
-        self.use_peepholes = use_peepholes
+        self.decay_rate = decay_rate
         self.training = training
 
         # Build Model
@@ -47,26 +47,29 @@ class RNNModel:
 
         # Build LSTM
         cells = [rnn.GRUCell(self.hidden_layer_size, name='Layer_{}'.format(i)) for i in range(self.cells_size)]
-        cell_drop = [rnn.DropoutWrapper(cell, input_keep_prob=self.keep_prob) for cell in cells]
+        cell_attention = [rnn.AttentionCellWrapper(cell, attn_length=120) for cell in cells]
+        cell_drop = [rnn.DropoutWrapper(cell, input_keep_prob=self.keep_prob) for cell in cell_attention]
         self.cell = rnn.MultiRNNCell(cell_drop)
+        self.cell = rnn.DropoutWrapper(self.cell, output_keep_prob=self.keep_prob)
 
         # Data
         self.input_data = tf.placeholder(tf.int32, [self.batch_size, self.sequence_length])
         self.targets = tf.placeholder(tf.int32, [self.batch_size, self.sequence_length])
         self.initial_state = self.cell.zero_state(self.batch_size, tf.float32)
+        # self.initial_state = tf.placeholder(tf.float32, [None, self.hidden_layer_size*self.cells_size], name='Hin')
 
         # Variables
         with tf.variable_scope('lstm_variables', reuse=tf.AUTO_REUSE):
             self.weights = tf.get_variable('weights', [self.hidden_layer_size, self.vocabulary_size])
             self.bias = tf.get_variable('bias', [self.vocabulary_size])
 
-            with tf.device('/cpu:0'):
-                self.embeddings = tf.get_variable('embeddings', [self.vocabulary_size, self.hidden_layer_size])
-                # Get embeddings for every input word
-                input_embeddings = tf.nn.embedding_lookup(self.embeddings, self.input_data)
-                # self.input_embeddings = input_embeddings
-                inputs_split = tf.split(input_embeddings, self.sequence_length, 1)
-                inputs_split = [tf.squeeze(input_, [1]) for input_ in inputs_split]
+            # with tf.device('/cpu:0'):
+            self.embeddings = tf.get_variable('embeddings', [self.vocabulary_size, self.hidden_layer_size])
+            # Get embeddings for every input word
+            input_embeddings = tf.nn.embedding_lookup(self.embeddings, self.input_data)
+            # self.input_embeddings = input_embeddings
+            inputs_split = tf.split(input_embeddings, self.sequence_length, 1)
+            inputs_split = [tf.squeeze(input_, [1]) for input_ in inputs_split]
 
         def loop(prev, _):
             previous = tf.matmul(prev, self.ws) + self.bs
@@ -81,10 +84,6 @@ class RNNModel:
                                                                    scope='lstm_variables')
 
         lstm_outputs = tf.reshape(tf.concat(lstm_outputs_split, 1), [-1, self.hidden_layer_size])
-
-        # Calculate logits
-        # output, self.new_state = tf.nn.dynamic_rnn(self.cell, self.embeddings, initial_state=self.initial_state)
-        # logits = tf.contrib.layers.fully_connected(lstm_outputs, self.hidden_layer_size, activation_fn=None)
 
 
         logits = tf.matmul(lstm_outputs, self.weights) + self.bias
@@ -103,17 +102,12 @@ class RNNModel:
         self.accuracy=tf.cast(correct_prediction,tf.float32)
 
         self.global_step = tf.Variable(0, trainable=False, name='global_step')
-        self.learning_rate = tf.train.exponential_decay(self.starter_learning_rate, self.global_step,
-                                           1000, 0.96, staircase=True)
-
-        # trainable_vars = tf.trainable_variables()
-        # grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, trainable_vars), self.gradient_clip)
+        self.learning_rate = tf.train.exponential_decay(self.starter_learning_rate, self.global_step, 1000, self.decay_rate, staircase=True)
 
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-        # self.train_op = self.optimizer.apply_gradients(zip(grads, trainable_vars))
-        self.train_op = self.optimizer.minimize(self.loss,
-                                                global_step=self.global_step,
-                                                name='train_op')
+        trainable_vars = tf.trainable_variables()
+        grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, trainable_vars), self.gradient_clip)
+        self.train_op = self.optimizer.apply_gradients(zip(grads, trainable_vars), global_step=self.global_step, name='train_op')
 
         tf.summary.histogram("logits", logits)
         tf.summary.histogram("probabilities", self.probabilities)

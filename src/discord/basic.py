@@ -98,7 +98,9 @@ async def freestyle(term: str, bars: int):
     num_out = bars * 12
     tf.reset_default_graph()
     # term = " ".join(list(term))
-    data_reader = Provider(10, 25)
+    data_reader = Provider(cfg["model_params"]["LSTM"]["BATCH_SIZE"],
+                           cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"])
+    
     vocabulary = data_reader.vocabulary
     sess = tf.Session()
     model = RNNModel(sess,

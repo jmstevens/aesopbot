@@ -99,7 +99,8 @@ class Freestyle:
         # while True:
         for epoch in range(1, self.TOTAL_EPOCHS + 1):
             bar = tqdm(range(1, self.provider.batches_size + 1))
-            self.provider.reset_batch_pointer()
+            self.provider = Provider(self.BATCH_SIZE, self.SEQUENCE_LENGTH)
+            # self.provider.reset_batch_pointer()
             for batch in bar:
                 inputs, targets = self.provider.next_batch()
                 feed_dict = {self.model.input_data: inputs, self.model.targets: targets}

@@ -1,0 +1,2 @@
+model_checkpoint_path: "aesop.ckpt-53616"
+all_model_checkpoint_paths: "aesop.ckpt-53616"

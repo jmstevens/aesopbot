@@ -36,6 +36,14 @@ from nltk.stem import LancasterStemmer, WordNetLemmatizer
 import pickle
 import json
 
+from keras.preprocessing.sequence import pad_sequences
+from keras.layers import Embedding, LSTM, Dense, Dropout
+from keras.preprocessing.text import Tokenizer
+from keras.callbacks import EarlyStopping
+from keras.models import Sequential
+import keras.utils as ku
+import numpy as np
+
 # word_vectors = api.load("glove-wiki-gigaword-100")
 class Provider():
     data_dir = 'data/processed/verses.txt'
@@ -48,6 +56,7 @@ class Provider():
         lyrics = [self.replace_numbers(i) for i in lyrics]
         lyrics = [self.remove_punctuation(i) for i in lyrics]
         lyrics = [''.join(i).replace("eol","<eol>").replace("eov","<eov") for i in lyrics]
+        lyrics = [i for i in lyrics if len(i.split()) <= 150]
         self.lyrics = lyrics
         self.batch_size = batch_size
         self.sequence_length = sequence_length
@@ -120,6 +129,100 @@ class Provider():
             if new_word != '':
                 new_words.append(new_word)
         return new_words
+
+
+class Data(object):
+    data_dir = 'data/processed/verses.txt'
+    with open('configs/config.json','r') as cfgFile:
+        cfg = json.load(cfgFile)
+
+    def __init__(self):
+        with open(self.data_dir, "rb") as fp:   # Unpickling
+            lyrics = pickle.load(fp)
+
+        lyrics = [self.remove_non_ascii(i) for i in lyrics]
+        lyrics = [self.replace_numbers(i) for i in lyrics]
+        lyrics = [self.remove_punctuation(i) for i in lyrics]
+        lyrics = [''.join(i).replace("eol","<eol>").replace("eov","<eov") for i in lyrics]
+        lyrics = [i for i in lyrics if len(i.split()) <= 300]
+        self.lyrics = lyrics
+
+        count_pairs = sorted(collections.Counter(' '.join(self.lyrics).split()).items(), key=lambda x: -x[1])
+        data = self.lyrics
+        self.chars, _ = zip(*count_pairs)
+        self.vocabulary_size = len(self.chars)
+        self.vocabulary = dict(zip(self.chars, range(len(self.chars))))
+
+        tokenizer = Tokenizer()
+
+        # basic cleanup
+        corpus = data
+
+        # tokenization
+        tokenizer.fit_on_texts(corpus)
+        total_words = len(tokenizer.word_index) + 1
+
+        # create input sequences using list of tokens
+        input_sequences = []
+        for line in corpus:
+            token_list = tokenizer.texts_to_sequences([line])[0]
+            for i in range(1, len(token_list)):
+            	n_gram_sequence = token_list[:i+1]
+            	input_sequences.append(n_gram_sequence)
+
+        # pad sequences
+        max_sequence_len = max([len(x) for x in input_sequences])
+        input_sequences = np.array(pad_sequences(input_sequences, maxlen=301, padding='pre'))
+
+        # create predictors and label
+        self.inputs, self.targets = input_sequences[:,:-1],input_sequences[:,-1]
+        self.labels = ku.to_categorical(self.targets, num_classes=total_words)
+
+        self.input_batches = np.split(self.inputs, 36)
+        self.target_batches = np.split(self.targets, 36)
+
+    def next_batch(self):
+        inputs = self.input_batches[self.pointer]
+        targets = self.target_batches[self.pointer]
+        self.pointer += 1
+        return inputs, targets
+
+    def reset_batch_pointer(self):
+            self.pointer = 0
+
+    @classmethod
+    def remove_non_ascii(self, words):
+        """Remove non-ASCII characters from list of tokenized words"""
+        new_words = []
+        for word in words:
+            new_word = unicodedata.normalize('NFKD', word).encode('ascii', 'ignore').decode('utf-8', 'ignore')
+            new_words.append(new_word)
+        return new_words
+
+    @classmethod
+    def replace_numbers(self, words):
+        """Replace all interger occurrences in list of tokenized words with textual representation"""
+        p = inflect.engine()
+        new_words = []
+        for word in words:
+            if word.isdigit():
+                new_word = p.number_to_words(word)
+                new_words.append(new_word)
+            else:
+                new_words.append(word)
+        return new_words
+
+    @classmethod
+    def remove_punctuation(self, words):
+        """Remove punctuation from list of tokenized words"""
+        new_words = []
+        for word in words:
+            new_word = re.sub(r'[^\w\s]', '', word)
+            if new_word != '':
+                new_words.append(new_word)
+        return new_words
+
+
 
 #
 #

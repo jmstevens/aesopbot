@@ -100,7 +100,7 @@ async def freestyle(term: str, bars: int):
     # term = " ".join(list(term))
     data_reader = Provider(cfg["model_params"]["LSTM"]["BATCH_SIZE"],
                            cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"])
-    
+
     vocabulary = data_reader.vocabulary
     sess = tf.Session()
     model = RNNModel(sess,
@@ -112,7 +112,7 @@ async def freestyle(term: str, bars: int):
                      keep_prob=cfg["model_params"]["LSTM"]["TRAIN_KEEP_PROB"],
                      gradient_clip=cfg["model_params"]["LSTM"]["GRADIENT_CLIP"],
                      starter_learning_rate=cfg["model_params"]["LSTM"]["STARTER_LEARNING_RATE"],
-                     use_peepholes=cfg["model_params"]["LSTM"]["USE_PEEPHOLES"],
+                     decay_rate=cfg["model_params"]["LSTM"]["DECAY_RATE"],
                      training=False
                      )
 

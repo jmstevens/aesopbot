@@ -5,7 +5,7 @@ from tensorflow.contrib.legacy_seq2seq.python.ops import seq2seq
 import pronouncing
 from tqdm import tqdm
 import re
-import math
+from math import log
 
 
 class RNNModel:
@@ -47,10 +47,10 @@ class RNNModel:
 
         # Build LSTM
         cells = [rnn.GRUCell(self.hidden_layer_size, name='Layer_{}'.format(i)) for i in range(self.cells_size)]
-        cell_attention = [rnn.AttentionCellWrapper(cell, attn_length=120) for cell in cells]
-        cell_drop = [rnn.DropoutWrapper(cell, input_keep_prob=self.keep_prob) for cell in cell_attention]
+        cell_attention = [rnn.AttentionCellWrapper(cell, attn_length=self.sequence_length) for cell in cells]
+        cell_drop = [rnn.DropoutWrapper(cell, input_keep_prob=self.keep_prob) for cell in cells]
         self.cell = rnn.MultiRNNCell(cell_drop)
-        self.cell = rnn.DropoutWrapper(self.cell, output_keep_prob=self.keep_prob)
+        # self.cell = rnn.DropoutWrapper(self.cell, output_keep_prob=self.keep_prob)
 
         # Data
         self.input_data = tf.placeholder(tf.int32, [self.batch_size, self.sequence_length])
@@ -107,7 +107,7 @@ class RNNModel:
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         trainable_vars = tf.trainable_variables()
         grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, trainable_vars), self.gradient_clip)
-        self.train_op = self.optimizer.apply_gradients(zip(grads, trainable_vars), global_step=self.global_step, name='train_op')
+        self.train_op = self.optimizer.apply_gradients(zip(grads, trainable_vars), global_step=self.global_step, name='train_op')#.minimize(self.loss, global_step=self.global_step, name='train_op')#.apply_gradients(zip(grads, trainable_vars), global_step=self.global_step, name='train_op')
 
         tf.summary.histogram("logits", logits)
         tf.summary.histogram("probabilities", self.probabilities)
@@ -122,8 +122,11 @@ class RNNModel:
     def beam_search_decoder(data, k):
         sequences = [[list(), 1.0]]
         # walk over each step in sequence
+        print(data)
+        print(data.tolist())
         for row in data.tolist():
             all_candidates = list()
+            print(row)
             # expand each current candidate
             for i in range(len(sequences)):
                 seq, score = sequences[i]
@@ -137,7 +140,6 @@ class RNNModel:
         return sequences
 
     def generate(self, num_out=50, priming_text=None, sample=True):
-        seq_i = []
         state = self.sess.run(self.cell.zero_state(1, tf.float32))
         if priming_text is None:
             prime = np.random.choice(self.vocabulary)
@@ -150,7 +152,7 @@ class RNNModel:
         except KeyError:
             word = np.random.choice(list(self.vocabulary.keys()))
             lastword_i = self.vocabulary[word]
-        seqi = [[lastword_i]]
+        seq_i = np.array([[lastword_i]])
         input_i = np.array([[lastword_i]])
         feed_dict = {self.input_data: input_i, self.initial_state: state}
         state = self.sess.run(self.final_state, feed_dict=feed_dict)
@@ -160,9 +162,11 @@ class RNNModel:
         counter = 0
         for i in tqdm(range(1, num_out + 1)):
             # generate word probabilities
+            # seq_i = np.append(seq_i,input_i)
             input_i = np.array([[lastword_i]])
             # input_i = np.array(seq_i.append(lastword_i))
-            # print(input_i)
+            # print(seq_i)
+            # self.sequence_length = seq_i.shape
             probs, state = self.sess.run([self.probabilities, self.final_state], feed_dict=feed_dict)
             feed_dict = {self.input_data: input_i, self.initial_state: state}
             probs = probs[0]

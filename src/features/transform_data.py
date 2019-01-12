@@ -81,14 +81,16 @@ class Transform():
                 else:
                     verse = verse + ' ' + j
                 verses.append(verse.lstrip())
-        verses = [i.replace('-----protools----- <eol>','') for i in verses if '<eov>' in i]
+        verses = [i.strip('\'"')  for i in verses if '<eov>' in i]
         self.verses = verses
         return verses
 
     def save(self):
         with open("data/processed/verses.txt", "wb") as fp:   #Pickling
+            # fp.write(''.join(self.verses).strip('\'"'))
             pickle.dump(self.verses, fp)
 
 def main():
     _t = Transform()
+    print(_t.verses)
     _t.save()

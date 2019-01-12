@@ -99,8 +99,7 @@ class Freestyle:
         # while True:
         for epoch in range(1, self.TOTAL_EPOCHS + 1):
             bar = tqdm(range(1, self.provider.batches_size + 1))
-            self.provider = Provider(self.BATCH_SIZE, self.SEQUENCE_LENGTH)
-            # self.provider.reset_batch_pointer()
+            self.provider.reset_batch_pointer()
             for batch in bar:
                 inputs, targets = self.provider.next_batch()
                 feed_dict = {self.model.input_data: inputs, self.model.targets: targets}
@@ -133,7 +132,7 @@ class Freestyle:
 
 
     def test(self, prime_text):
-        sample = self.model.generate(priming_text=prime_text)
+        sample = self.model.generate(self.provider, priming_text=prime_text)
         return sample
 
 def main():
@@ -145,6 +144,39 @@ def main():
     prime_text = None
 
     Freestyle(load_path, prime_text, training)
+
+def generate():
+    with open('configs/config.json','r') as cfgFile:
+        cfg = json.load(cfgFile)
+    num_out = 420
+    tf.reset_default_graph()
+    # term = " ".join(list(term))
+    data_reader = Provider(cfg["model_params"]["LSTM"]["BATCH_SIZE"],
+                           cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"])
+
+    vocabulary = data_reader.vocabulary
+    sess = tf.Session()
+    model = RNNModel(sess,
+                     vocabulary=vocabulary,
+                     batch_size=cfg["model_params"]["LSTM"]["BATCH_SIZE"],
+                     sequence_length=cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"],
+                     hidden_layer_size=cfg["model_params"]["LSTM"]["HIDDEN_LAYER_SIZE"],
+                     cells_size=cfg["model_params"]["LSTM"]["CELLS_SIZE"],
+                     keep_prob=cfg["model_params"]["LSTM"]["TRAIN_KEEP_PROB"],
+                     gradient_clip=cfg["model_params"]["LSTM"]["GRADIENT_CLIP"],
+                     starter_learning_rate=cfg["model_params"]["LSTM"]["STARTER_LEARNING_RATE"],
+                     decay_rate=cfg["model_params"]["LSTM"]["DECAY_RATE"],
+                     training=False
+                     )
+
+    saver = tf.train.Saver()
+    sess.run(tf.global_variables_initializer())
+    _num = str(max([int(i.replace('ckpt-','')) for i in list(set([i.split('.')[1] for i in os.listdir("src/data") if 'aesop.ckpt-' in i]))]))
+    saver.restore(sess, "src/data/aesop.ckpt-{}".format(_num))
+    sample = model.generate(data_reader, priming_text="Im only nineteen but my mind is older", sample=True, num_out=50)
+
+    print(sample)
+
 
 if __name__ == '__main__':
     main()

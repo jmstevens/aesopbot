@@ -7,9 +7,11 @@ async-timeout==3.0.1
 awscli==1.16.59
 Babel==2.6.0
 backcall==0.1.0
+beautifulsoup4==4.7.1
 boto==2.49.0
 boto3==1.9.56
 botocore==1.12.56
+bs4==0.0.1
 bz2file==0.98
 certifi==2018.10.15
 chardet==3.0.4
@@ -24,6 +26,8 @@ dill==0.2.8.2
 discord==0.0.2
 discord.py==0.16.12
 docutils==0.14
+en-core-web-lg==2.0.0
+en-core-web-sm==2.0.0
 flake8==3.6.0
 gast==0.2.0
 gensim==3.6.0
@@ -68,7 +72,7 @@ python-dateutil==2.7.5
 python-dotenv==0.9.1
 python-slugify==1.2.6
 pytz==2018.7
-PyYAML==3.13
+pyyaml>=4.2b1
 regex==2017.11.9
 requests==2.20.1
 rsa==3.4.2
@@ -77,6 +81,7 @@ scipy==1.1.0
 six==1.11.0
 smart-open==1.7.1
 snowballstemmer==1.2.1
+soupsieve==1.6.2
 spacy==2.0.17
 Sphinx==1.8.2
 sphinxcontrib-websupport==1.1.0
@@ -89,6 +94,7 @@ tqdm==4.28.1
 traitlets==4.3.2
 ujson==1.35
 Unidecode==1.0.23
+urllib3==1.24.1
 wcwidth==0.1.7
 websockets==3.4
 Werkzeug==0.14.1

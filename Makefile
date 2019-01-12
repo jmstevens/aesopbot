@@ -97,6 +97,9 @@ transform:
 train:
 	$(PYTHON_INTERPRETER) -m src.models.train
 
+test:
+	$(PYTHON_INTERPRETER) -c "import src.models.train as _b; _b.generate()"
+
 # Make predictions
 launch_bot:
 	$(PYTHON_INTERPRETER) -m src.discord.basic

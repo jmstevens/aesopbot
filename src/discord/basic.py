@@ -93,9 +93,10 @@ async def gif(*term: str):
     await bot.say(_gif)
 
 @bot.command()
-async def freestyle(term: str, bars: int):
-    """Aesop Raps"""
-    num_out = bars * 12
+async def freestyle_topic(*term: str):
+    """Aesop Raps about a specific topic"""
+    num_out = 100
+    term = " ".join(list(term))
     tf.reset_default_graph()
     # term = " ".join(list(term))
     data_reader = Provider(cfg["model_params"]["LSTM"]["BATCH_SIZE"],
@@ -120,9 +121,42 @@ async def freestyle(term: str, bars: int):
     sess.run(tf.global_variables_initializer())
     _num = str(max([int(i.replace('ckpt-','')) for i in list(set([i.split('.')[1] for i in os.listdir("src/data") if 'aesop.ckpt-' in i]))]))
     saver.restore(sess, "src/data/aesop.ckpt-{}".format(_num))
-    sample = model.generate(priming_text=term, sample=True, num_out=num_out)
-    sample = '\n'.join([' '.join(i.split()) for i in sample.split('\n')])
+    sample = model.generate(data_reader, priming_text=term, sample=True, num_out=num_out, temperature=.9)
+    # sample = '\n'.join([' '.join(i.split()) for i in sample.split('\n')])
     await bot.say(sample)
+
+@bot.command()
+async def freestyle_random(temperature: str):
+    """Aesop Raps: Random Aesop lyrics are fed in to seed the generator"""
+    num_out = 100
+    temperature = float(temperature)
+    tf.reset_default_graph()
+    # term = " ".join(list(term))
+    data_reader = Provider(cfg["model_params"]["LSTM"]["BATCH_SIZE"],
+                           cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"])
+
+    vocabulary = data_reader.vocabulary
+    sess = tf.Session()
+    model = RNNModel(sess,
+                     vocabulary=vocabulary,
+                     batch_size=cfg["model_params"]["LSTM"]["BATCH_SIZE"],
+                     sequence_length=cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"],
+                     hidden_layer_size=cfg["model_params"]["LSTM"]["HIDDEN_LAYER_SIZE"],
+                     cells_size=cfg["model_params"]["LSTM"]["CELLS_SIZE"],
+                     keep_prob=cfg["model_params"]["LSTM"]["TRAIN_KEEP_PROB"],
+                     gradient_clip=cfg["model_params"]["LSTM"]["GRADIENT_CLIP"],
+                     starter_learning_rate=cfg["model_params"]["LSTM"]["STARTER_LEARNING_RATE"],
+                     decay_rate=cfg["model_params"]["LSTM"]["DECAY_RATE"],
+                     training=False
+                     )
+
+    saver = tf.train.Saver()
+    sess.run(tf.global_variables_initializer())
+    _num = str(max([int(i.replace('ckpt-','')) for i in list(set([i.split('.')[1] for i in os.listdir("src/data") if 'aesop.ckpt-' in i]))]))
+    saver.restore(sess, "src/data/aesop.ckpt-{}".format(_num))
+    sample = model.generate(data_reader, priming_text=None, sample=True, num_out=num_out, temperature=temperature)
+    await bot.say(sample)
+
 
 # @bot.command()
 # async def speak():

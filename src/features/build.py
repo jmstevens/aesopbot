@@ -14,34 +14,35 @@ import csv
 from functools import reduce
 import random
 from tqdm import tqdm
-from nltk.corpus import stopwords
-from nltk.stem import SnowballStemmer
-from string import punctuation
-import nltk
+import itertools
+# from nltk.corpus import stopwords
+# from nltk.stem import SnowballStemmer
+# from string import punctuation
+# import nltk
 from random import shuffle
 
-from gensim.models import KeyedVectors
-import gensim.downloader as api
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
+# from gensim.models import KeyedVectors
+# import gensim.downloader as api
+# from keras.preprocessing.text import Tokenizer
+# from keras.preprocessing.sequence import pad_sequences
 
 import re, string, unicodedata
-import nltk
+# import nltk
 import contractions
 import inflect
 from bs4 import BeautifulSoup
-from nltk import word_tokenize, sent_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import LancasterStemmer, WordNetLemmatizer
+# from nltk import word_tokenize, sent_tokenize
+# from nltk.corpus import stopwords
+# from nltk.stem import LancasterStemmer, WordNetLemmatizer
 import pickle
 import json
 
-from keras.preprocessing.sequence import pad_sequences
-from keras.layers import Embedding, LSTM, Dense, Dropout
-from keras.preprocessing.text import Tokenizer
-from keras.callbacks import EarlyStopping
-from keras.models import Sequential
-import keras.utils as ku
+# from keras.preprocessing.sequence import pad_sequences
+# from keras.layers import Embedding, LSTM, Dense, Dropout
+# from keras.preprocessing.text import Tokenizer
+# from keras.callbacks import EarlyStopping
+# from keras.models import Sequential
+# import keras.utils as ku
 import numpy as np
 
 # word_vectors = api.load("glove-wiki-gigaword-100")
@@ -55,20 +56,29 @@ class Provider():
         lyrics = [self.remove_non_ascii(i) for i in lyrics]
         lyrics = [self.replace_numbers(i) for i in lyrics]
         lyrics = [self.remove_punctuation(i) for i in lyrics]
-        lyrics = [''.join(i).replace("eol","<eol>").replace("eov","<eov") for i in lyrics]
-        lyrics = [i for i in lyrics if len(i.split()) <= 150]
+        lyrics = [''.join(i).replace("eol","<eol>").replace("eov","<eov>") for i in lyrics]
+        # shuffle(lyrics)
+        # lyrics = [i for i in lyrics if len(i.split())]
         self.lyrics = lyrics
         self.batch_size = batch_size
         self.sequence_length = sequence_length
         self.pointer = 0
         # self.new_sequence()
         count_pairs = sorted(collections.Counter(' '.join(self.lyrics).split()).items(), key=lambda x: -x[1])
-        # count_pairs = sorted(collections.Counter(' '.join([' '.join(i) for i in self.lyrics]).split(' ')).items(), key=lambda x: -x[1])
+        # data = []
+        # for i in self.lyrics:
+        #     verse = i.split(" ")
+        #     for j in verse:
+        #         if '<' not in j:
+        #             data = data + list(j)
+        #         else:
+        #             data.append(j)
+        # linking = [i.split() for i in linking if '<eol>' not in i or '<eov>' not in i]
+        # count_pairs = sorted(collections.Counter(data).items(), key=lambda x: -x[1])
         self.pointer = 0
-        # data = ' '.join([' '.join(i) for i in self.lyrics]).split(' ')
         data_shuff = self.lyrics
-        shuffle(data_shuff)
-        data = ' '.join(data_shuff).split()
+        # shuffle(data_shuff)
+        data = ' '.join(self.lyrics).split()#' '.join(data_shuff).split()
         self.chars, _ = zip(*count_pairs)
         self.vocabulary_size = len(self.chars)
         self.vocabulary = dict(zip(self.chars, range(len(self.chars))))
@@ -87,7 +97,6 @@ class Provider():
 
         self.input_batches = np.split(inputs.reshape(self.batch_size, -1), self.batches_size, 1)
         self.target_batches = np.split(targets.reshape(self.batch_size, -1), self.batches_size, 1)
-
 
     def next_batch(self):
         inputs = self.input_batches[self.pointer]

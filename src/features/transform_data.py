@@ -92,5 +92,5 @@ class Transform():
 
 def main():
     _t = Transform()
-    print(_t.verses)
+    # print(_t.verses)
     _t.save()

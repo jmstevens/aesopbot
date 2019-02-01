@@ -15,37 +15,110 @@ from functools import reduce
 import random
 from tqdm import tqdm
 import itertools
-# from nltk.corpus import stopwords
-# from nltk.stem import SnowballStemmer
-# from string import punctuation
-# import nltk
 from random import shuffle
-
-# from gensim.models import KeyedVectors
-# import gensim.downloader as api
-# from keras.preprocessing.text import Tokenizer
-# from keras.preprocessing.sequence import pad_sequences
-
 import re, string, unicodedata
-# import nltk
 import contractions
 import inflect
 from bs4 import BeautifulSoup
-# from nltk import word_tokenize, sent_tokenize
-# from nltk.corpus import stopwords
-# from nltk.stem import LancasterStemmer, WordNetLemmatizer
 import pickle
 import json
-
-# from keras.preprocessing.sequence import pad_sequences
-# from keras.layers import Embedding, LSTM, Dense, Dropout
-# from keras.preprocessing.text import Tokenizer
-# from keras.callbacks import EarlyStopping
-# from keras.models import Sequential
-# import keras.utils as ku
 import numpy as np
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+import tensorflow.keras.utils as ku
+import gensim
 
 # word_vectors = api.load("glove-wiki-gigaword-100")
+# class Provider():
+#     embedding_model = gensim.models.KeyedVectors.load_word2vec_format('data/GoogleNews-vectors-negative300.bin', binary=True)
+#     data_dir = 'data/processed/verses.txt'
+#     with open('configs/config.json','r') as cfgFile:
+#         cfg = json.load(cfgFile)
+#
+#     def __init__(self, batch_size, sequence_length):
+#         with open(self.data_dir, "rb") as fp:   # Unpickling
+#             lyrics = pickle.load(fp)
+#         lyrics = [self.remove_non_ascii(i) for i in lyrics]
+#         lyrics = [self.replace_numbers(i) for i in lyrics]
+#         lyrics = [self.remove_punctuation(i) for i in lyrics]
+#         lyrics = [''.join(i) for i in lyrics]
+#
+#         tokenizer = Tokenizer(num_words = 20000)
+#         tokenizer.fit_on_texts(lyrics)
+#         word_index = tokenizer.word_index
+#
+#         sequences = tokenizer.texts_to_sequences(lyrics)
+#         total_words = len(tokenizer.word_index) + 1
+#
+#         nb_words = min(20000, len(word_index))+1
+#         embedding_matrix = np.zeros((nb_words, 300))
+#         for word, i in word_index.items():
+#             if word in self.embedding_model.vocab:
+#                 embedding_matrix[i] = self.embedding_model.word_vec(word)
+#         self.embedding_matrix = embedding_matrix
+#
+#
+#         x = np.array(lyrics)
+#         # tokenizer = Tokenizer(num_words = 20000)
+#         np.random.shuffle(x)
+#         split_size = round(x.shape[0] * float(0.1))
+#         train = x[split_size:]
+#         test = x[:split_size]
+#         #
+#         # tokenizer.fit_on_texts(X + Y)
+#         #
+#         # train_sequences = tokenizer.texts_to_sequences(X)
+#         # test_sequences = tokenizer.texts_to_sequences(Y)
+#         # word_index = tokenizer.word_index
+#
+#         def prep(lyrics):
+#             input_sequences = []
+#             for line in lyrics:
+#                 token_list = tokenizer.texts_to_sequences([line])[0]
+#                 for i in range(1, len(token_list)):
+#                 	n_gram_sequence = token_list[:i+1]
+#                 	input_sequences.append(n_gram_sequence)
+#             # pad sequences
+#             max_sequence_len = max([len(x) for x in input_sequences])
+#             input_sequences = np.array(pad_sequences(input_sequences, maxlen=301, padding='pre'))
+#
+#             # create predictors and label
+#             inputs, targets = input_sequences[:,:-1],input_sequences[:,-1]
+#             return inputs, targets
+#             # labels = ku.to_categorical(self.targets, num_classes=total_words)
+#
+#         self.train_x, self.train_y = prep(train)
+#         self.test_x, self.test_y = prep(test)
+#
+#         tmp = list(self.factors(self.train_x.shape[0]))
+#         tmp.sort()
+#         split_num = self.findMiddle(tmp)
+#
+#         self.input_batches = np.split(self.train_x, split_num)
+#         self.target_batches = np.split(self.train_y, split_num)
+#         # tmp = list(self.factors(self.test_x.shape[0]))
+#         # tmp.sort()
+#         # split_num_test = self.findMiddle(tmp.sort())
+#         # self.input_batches_test = np.split(self.test_x, split_num_test)
+#         # self.target_batches_test = np.split(self.test_y, split_num_test)
+#
+#     def next_batch(self):
+#         inputs = self.input_batches[self.pointer]
+#         targets = self.target_batches[self.pointer]
+#         self.pointer += 1
+#         return inputs, targets
+#
+#     def next_batch_test(self):
+#         inputs = self.input_batches_test[self.pointer_test]
+#         targets = self.target_batches_test[self.pointer_test]
+#         self.pointer_test += 1
+#         return inputs, targets
+#
+#     def reset_batch_pointer(self):
+#             self.pointer = 0
+#
+#     def reset_batch_pointer_test(self):
+#             self.pointer_test = 0
 class Provider():
     data_dir = 'data/processed/verses.txt'
     with open('configs/config.json','r') as cfgFile:
@@ -53,32 +126,25 @@ class Provider():
     def __init__(self, batch_size, sequence_length):
         with open(self.data_dir, "rb") as fp:   # Unpickling
             lyrics = pickle.load(fp)
+        # lyrics = [''.join(i).replace("<eol>","\").replace("<eov"," ") for i in lyrics]
         lyrics = [self.remove_non_ascii(i) for i in lyrics]
         lyrics = [self.replace_numbers(i) for i in lyrics]
         lyrics = [self.remove_punctuation(i) for i in lyrics]
-        lyrics = [''.join(i).replace("eol","<eol>").replace("eov","<eov>") for i in lyrics]
-        # shuffle(lyrics)
-        # lyrics = [i for i in lyrics if len(i.split())]
+        lyrics = [''.join(i) for i in lyrics]
+        lyrics = [i.replace("eol","\n").replace("eov","\n\n") for i in lyrics]
+        shuffle(lyrics)
         self.lyrics = lyrics
         self.batch_size = batch_size
         self.sequence_length = sequence_length
         self.pointer = 0
         # self.new_sequence()
-        count_pairs = sorted(collections.Counter(' '.join(self.lyrics).split()).items(), key=lambda x: -x[1])
-        # data = []
-        # for i in self.lyrics:
-        #     verse = i.split(" ")
-        #     for j in verse:
-        #         if '<' not in j:
-        #             data = data + list(j)
-        #         else:
-        #             data.append(j)
-        # linking = [i.split() for i in linking if '<eol>' not in i or '<eov>' not in i]
-        # count_pairs = sorted(collections.Counter(data).items(), key=lambda x: -x[1])
+        # count_pairs = sorted(collections.Counter(' '.join(self.lyrics).split()).items(), key=lambda x: -x[1])
+        count_pairs = sorted(collections.Counter(list(' '.join([' '.join(i) for i in self.lyrics]))).items(), key=lambda x: -x[1])
+        self.count_pairs = count_pairs
         self.pointer = 0
-        data_shuff = self.lyrics
-        # shuffle(data_shuff)
-        data = ' '.join(self.lyrics).split()#' '.join(data_shuff).split()
+        # data = ' '.join([' '.join(i) for i in self.lyrics])
+        data = ' '.join(self.lyrics)
+        # self.data = data
         self.chars, _ = zip(*count_pairs)
         self.vocabulary_size = len(self.chars)
         self.vocabulary = dict(zip(self.chars, range(len(self.chars))))
@@ -97,6 +163,7 @@ class Provider():
 
         self.input_batches = np.split(inputs.reshape(self.batch_size, -1), self.batches_size, 1)
         self.target_batches = np.split(targets.reshape(self.batch_size, -1), self.batches_size, 1)
+
 
     def next_batch(self):
         inputs = self.input_batches[self.pointer]
@@ -138,6 +205,19 @@ class Provider():
             if new_word != '':
                 new_words.append(new_word)
         return new_words
+
+    @staticmethod
+    def findMiddle(input_list):
+        middle = float(len(input_list))/2
+        if middle % 2 != 0:
+            return input_list[int(middle - .5)]
+        else:
+            return input_list[int(middle-1)]
+
+    @staticmethod
+    def factors(n):
+        return set(reduce(list.__add__,
+                    ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))
 
 
 class Data(object):

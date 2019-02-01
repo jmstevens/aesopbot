@@ -313,7 +313,10 @@ class Genius(API):
                     info = self.get_song(song_info['id'])
                 else:
                     info = {'song': song_info}
-                song = Song(info, lyrics)
+                try:
+                    song = Song(info, lyrics)
+                except TypeError:
+                    pass
 
                 # Attempt to add the Song to the Artist
                 result = artist.add_song(song, verbose=False)

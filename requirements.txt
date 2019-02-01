@@ -26,8 +26,6 @@ dill==0.2.8.2
 discord==0.0.2
 discord.py==0.16.12
 docutils==0.14
-en-core-web-lg==2.0.0
-en-core-web-sm==2.0.0
 flake8==3.6.0
 gast==0.2.0
 gensim==3.6.0

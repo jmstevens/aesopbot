@@ -90,7 +90,7 @@ class Freestyle:
         summaries = tf.summary.merge_all()
         writer = tf.summary.FileWriter(self.tensorboard_dir)
         writer.add_graph(self.sess.graph)
-
+        initial_state = np.zeros([self.BATCH_SIZE, self.HIDDEN_LAYER_SIZE*self.CELLS_SIZE])
         # epoch = 0
         temp_losses = []
         smooth_losses = []
@@ -109,22 +109,22 @@ class Freestyle:
                                                                          self.model.accuracy,
                                                                          self.model.train_op],
                                                                         feed_dict=feed_dict)
+                temp_accuracy.append(accuracy)
+                temp_losses.append(loss)
+
                 bar.set_description("Epoch:{0} | Global Step:{1} | Batch Number: {2} | Loss: {3} | Accuracy: {4}".format(epoch, global_step, batch, loss, accuracy))
                 bar.refresh()
                 writer.add_summary(summary, global_step)
 
-            temp_losses.append(loss)
             smooth_loss = np.mean(temp_losses)
-            smooth_losses.append(smooth_loss)
             print('{{"metric": "average loss", "value": {}}}'.format(smooth_loss))
             temp_losses = []
 
-            temp_accuracy.append(accuracy)
             smooth_accuracy = np.mean(temp_accuracy)
-            smooth_accuracies.append(smooth_accuracy)
-            print('{{"metric": "average accuracy", "value": {}}}'.format(accuracy))
+            print('{{"metric": "average accuracy", "value": {}}}'.format(smooth_accuracy))
             temp_losses = []
-
+            tf.summary.scalar("average loss", smooth_loss)
+            tf.summary.scalar("average accuracy", smooth_accuracy)
             # embedding_conf.tensor_name = embeddings
             writer.add_summary(summary, global_step)
             print("Saving model......")
@@ -148,12 +148,12 @@ def main():
 def generate():
     with open('configs/config.json','r') as cfgFile:
         cfg = json.load(cfgFile)
-    num_out = 420
+    num_out = 1000
     tf.reset_default_graph()
     # term = " ".join(list(term))
     data_reader = Provider(cfg["model_params"]["LSTM"]["BATCH_SIZE"],
                            cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"])
-
+    print(data_reader.vocabulary)
     vocabulary = data_reader.vocabulary
     sess = tf.Session()
     model = RNNModel(sess,
@@ -173,9 +173,10 @@ def generate():
     sess.run(tf.global_variables_initializer())
     _num = str(max([int(i.replace('ckpt-','')) for i in list(set([i.split('.')[1] for i in os.listdir("src/data") if 'aesop.ckpt-' in i]))]))
     saver.restore(sess, "src/data/aesop.ckpt-{}".format(_num))
-    sample = model.generate(data_reader, priming_text="Im only nineteen but my mind is older", sample=True, num_out=50)
+    sample = model.generate(data_reader, priming_text="Im only nineteen but my mind is older ", sample=True, num_out=10000, temperature=.8)
 
     print(sample)
+    return sample
 
 
 if __name__ == '__main__':

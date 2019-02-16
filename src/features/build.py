@@ -27,6 +27,7 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import tensorflow.keras.utils as ku
 import gensim
+from copy import copy
 
 # word_vectors = api.load("glove-wiki-gigaword-100")
 # class Provider():
@@ -131,9 +132,9 @@ class Provider():
         lyrics = [self.replace_numbers(i) for i in lyrics]
         lyrics = [self.remove_punctuation(i) for i in lyrics]
         lyrics = [''.join(i) for i in lyrics]
-        lyrics = [i.replace("eol","\n").replace("eov","\n\n") for i in lyrics]
-        shuffle(lyrics)
-        self.lyrics = lyrics
+        self.lyrics_raw = [i.replace("eol","\n").replace("eov","\n\n") for i in lyrics]
+        self.lyrics_raw = [i.replace(' \n ','\n').replace('\n\n\n','\n\n') for i in self.lyrics_raw if len(i) < 1500]
+        self.shuffle_and_reset()
         self.batch_size = batch_size
         self.sequence_length = sequence_length
         self.pointer = 0
@@ -165,6 +166,7 @@ class Provider():
         self.target_batches = np.split(targets.reshape(self.batch_size, -1), self.batches_size, 1)
 
 
+
     def next_batch(self):
         inputs = self.input_batches[self.pointer]
         targets = self.target_batches[self.pointer]
@@ -172,7 +174,14 @@ class Provider():
         return inputs, targets
 
     def reset_batch_pointer(self):
-            self.pointer = 0
+        self.pointer = 0
+
+    def shuffle_and_reset(self):
+        _lyrics = copy(self.lyrics_raw)
+        shuffle(_lyrics)
+        self.lyrics = _lyrics
+        self.pointer = 0
+        return _lyrics
 
     @classmethod
     def remove_non_ascii(self, words):

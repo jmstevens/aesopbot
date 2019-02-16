@@ -99,7 +99,8 @@ class Freestyle:
         # while True:
         for epoch in range(1, self.TOTAL_EPOCHS + 1):
             bar = tqdm(range(1, self.provider.batches_size + 1))
-            self.provider.reset_batch_pointer()
+            self.provider.shuffle_and_reset()
+            # self.provider.reset_batch_pointer()
             for batch in bar:
                 inputs, targets = self.provider.next_batch()
                 feed_dict = {self.model.input_data: inputs, self.model.targets: targets}
@@ -123,7 +124,7 @@ class Freestyle:
             smooth_accuracy = np.mean(temp_accuracy)
             print('{{"metric": "average accuracy", "value": {}}}'.format(smooth_accuracy))
             temp_losses = []
-            tf.summary.scalar("average loss", smooth_loss)
+            writer_val = tf.summary.scalar("average loss", smooth_loss)
             tf.summary.scalar("average accuracy", smooth_accuracy)
             # embedding_conf.tensor_name = embeddings
             writer.add_summary(summary, global_step)

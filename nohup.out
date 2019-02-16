@@ -1,0 +1,6 @@
+python3 -m src.discord.basic
+2019-02-10 17:24:48.072844: I tensorflow/core/platform/cpu_feature_guard.cc:141] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+Logged in as
+aesopbot
+513906406940999730
+------

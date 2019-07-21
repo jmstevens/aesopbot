@@ -133,8 +133,9 @@ class Provider():
         lyrics = [self.remove_punctuation(i) for i in lyrics]
         lyrics = [''.join(i) for i in lyrics]
         self.lyrics_raw = [i.replace("eol","\n").replace("eov","\n\n") for i in lyrics]
-        self.lyrics_raw = [i.replace(' \n ','\n').replace('\n\n\n','\n\n') for i in self.lyrics_raw if len(i) < 1500]
-        self.shuffle_and_reset()
+        self.lyrics = [i.replace(' \n ','\n').replace('\n\n\n','\n\n') for i in self.lyrics_raw if len(i) < 1500]
+        # self.shuffle_and_reset()
+
         self.batch_size = batch_size
         self.sequence_length = sequence_length
         self.pointer = 0

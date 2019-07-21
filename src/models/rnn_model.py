@@ -50,8 +50,8 @@ class RNNModel:
 
         # Build LSTM
         cells = [rnn.LSTMCell(self.hidden_layer_size, state_is_tuple=True, use_peepholes=False, cell_clip=1., activation='relu') for _ in range(self.cells_size)]
-        cell_attention = [rnn.AttentionCellWrapper(cell, attn_length=150, state_is_tuple=True) for cell in cells]
-        cell_drop = [rnn.DropoutWrapper(cell, input_keep_prob=self.keep_prob) for cell in cells]
+        cell_attention = [rnn.AttentionCellWrapper(cell, attn_length=250, state_is_tuple=True) for cell in cells]
+        cell_drop = [rnn.DropoutWrapper(cell, input_keep_prob=self.keep_prob) for cell in cell_attention]
         cell = rnn.MultiRNNCell(cell_drop, state_is_tuple=True)
         self.cell = rnn.DropoutWrapper(cell, output_keep_prob=self.keep_prob)
 
@@ -106,7 +106,7 @@ class RNNModel:
         self.global_step = tf.Variable(0, trainable=False, name='global_step')
 
         self.learning_rate = tf.train.exponential_decay(self.starter_learning_rate, self.global_step,
-                                           100000, 0.999, staircase=True)
+                                           100, 0.999, staircase=True)
         trainable_vars = tf.trainable_variables()
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         gvs = optimizer.compute_gradients(self.loss, trainable_vars)

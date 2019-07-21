@@ -99,7 +99,7 @@ class Freestyle:
         # while True:
         for epoch in range(1, self.TOTAL_EPOCHS + 1):
             bar = tqdm(range(1, self.provider.batches_size + 1))
-            self.provider.shuffle_and_reset()
+            # self.provider.shuffle_and_reset()
             # self.provider.reset_batch_pointer()
             for batch in bar:
                 inputs, targets = self.provider.next_batch()

@@ -1,10 +1,11 @@
-from src.features.genius.api import API, Genius
+# from src.features.genius.api import API, Genius
 from configs import config
-from src.features.genius.artist import Artist
-from src.features.genius.song import Song
-from src.features.genius.song import Song
+# from src.features.genius.artist import Artist
+# from src.features.genius.song import Song
+# from src.features.genius.song import Song
 import json
 import pickle
+import io
 
 
 class Transform():
@@ -89,6 +90,8 @@ class Transform():
         with open("data/processed/verses.txt", "wb") as fp:   #Pickling
             # fp.write(''.join(self.verses).strip('\'"'))
             pickle.dump(self.verses, fp)
+        # with io.open("data/processed/verses.txt", 'w', encoding='utf8') as f:
+        #     f.write(' <eov> '.join(self.verses))
 
 def main():
     _t = Transform()

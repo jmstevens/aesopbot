@@ -19,7 +19,7 @@ import string
 import csv
 from functools import reduce
 import random
-from tqdm import tqdm
+# from tqdm import tqdm
 import itertools
 from random import shuffle
 import re, string, unicodedata

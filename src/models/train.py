@@ -1,6 +1,6 @@
 import sys
 import os
-from src.features.build import Dataset, Provider
+from src.features.build import Provider
 from src.models.rnn_model import RNNModel #.rnn_model import RNNModel
 from tensorflow.contrib.tensorboard.plugins import projector
 import sys
@@ -11,6 +11,7 @@ import copy
 from tqdm import tqdm
 import glob
 import csv
+import json
 
 data_dir = "src/data"
 tensorboard_dir = data_dir + "/tensorboard/" + str(time.strftime("%Y-%m-%d"))
@@ -21,16 +22,19 @@ output.close()
 
 
 class Freestyle:
-    BATCH_SIZE = 25
-    SEQUENCE_LENGTH = 12
-    STARTER_LEARNING_RATE = 0.001
-    DECAY_RATE = 0.95
-    HIDDEN_LAYER_SIZE = 512
-    CELLS_SIZE = 2
-    TRAIN_KEEP_PROB = 0.2
-    GRADIENT_CLIP = 5.
-    USE_PEEPHOLES = False
-    TOTAL_EPOCHS = 1000
+    with open('configs/config.json','r') as cfgFile:
+        cfg = json.load(cfgFile)
+
+    BATCH_SIZE = cfg["model_params"]["LSTM"]["BATCH_SIZE"]
+    SEQUENCE_LENGTH = cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"]
+    STARTER_LEARNING_RATE = cfg["model_params"]["LSTM"]["STARTER_LEARNING_RATE"]
+    DECAY_RATE = cfg["model_params"]["LSTM"]["DECAY_RATE"]
+    HIDDEN_LAYER_SIZE = cfg["model_params"]["LSTM"]["HIDDEN_LAYER_SIZE"]
+    CELLS_SIZE = cfg["model_params"]["LSTM"]["CELLS_SIZE"]
+    TRAIN_KEEP_PROB = cfg["model_params"]["LSTM"]["TRAIN_KEEP_PROB"]
+    GRADIENT_CLIP = cfg["model_params"]["LSTM"]["GRADIENT_CLIP"]
+    USE_PEEPHOLES = cfg["model_params"]["LSTM"]["USE_PEEPHOLES"]
+    TOTAL_EPOCHS = cfg["model_params"]["LSTM"]["TOTAL_EPOCHS"]
     # DROPOUT = 0.9
 
     TEXT_SAMPLE_LENGTH = 500
@@ -62,7 +66,7 @@ class Freestyle:
                               self.TRAIN_KEEP_PROB,
                               self.GRADIENT_CLIP,
                               self.STARTER_LEARNING_RATE,
-                              self.USE_PEEPHOLES,
+                              self.DECAY_RATE,
                               self.training
                               )
 
@@ -86,7 +90,7 @@ class Freestyle:
         summaries = tf.summary.merge_all()
         writer = tf.summary.FileWriter(self.tensorboard_dir)
         writer.add_graph(self.sess.graph)
-
+        initial_state = np.zeros([self.BATCH_SIZE, self.HIDDEN_LAYER_SIZE*self.CELLS_SIZE])
         # epoch = 0
         temp_losses = []
         smooth_losses = []
@@ -95,49 +99,41 @@ class Freestyle:
         # while True:
         for epoch in range(1, self.TOTAL_EPOCHS + 1):
             bar = tqdm(range(1, self.provider.batches_size + 1))
-            self.provider = Provider(self.BATCH_SIZE, self.SEQUENCE_LENGTH)
+            # self.provider.shuffle_and_reset()
             # self.provider.reset_batch_pointer()
             for batch in bar:
                 inputs, targets = self.provider.next_batch()
                 feed_dict = {self.model.input_data: inputs, self.model.targets: targets}
                 summary, global_step, loss, accuracy, _ = self.sess.run([summaries,
-                                                                            self.model.global_step,
-                                                                            self.model.loss,
-                                                                            self.model.accuracy,
-                                                                            self.model.train_op],
-                                                                         feed_dict=feed_dict)
+                                                                         self.model.global_step,
+                                                                         self.model.loss,
+                                                                         self.model.accuracy,
+                                                                         self.model.train_op],
+                                                                        feed_dict=feed_dict)
+                temp_accuracy.append(accuracy)
+                temp_losses.append(loss)
+
                 bar.set_description("Epoch:{0} | Global Step:{1} | Batch Number: {2} | Loss: {3} | Accuracy: {4}".format(epoch, global_step, batch, loss, accuracy))
                 bar.refresh()
                 writer.add_summary(summary, global_step)
 
-            temp_losses.append(loss)
             smooth_loss = np.mean(temp_losses)
-            smooth_losses.append(smooth_loss)
             print('{{"metric": "average loss", "value": {}}}'.format(smooth_loss))
             temp_losses = []
 
-            temp_accuracy.append(accuracy)
             smooth_accuracy = np.mean(temp_accuracy)
-            smooth_accuracies.append(smooth_accuracy)
-            print('{{"metric": "average accuracy", "value": {}}}'.format(accuracy))
+            print('{{"metric": "average accuracy", "value": {}}}'.format(smooth_accuracy))
             temp_losses = []
-
+            writer_val = tf.summary.scalar("average loss", smooth_loss)
+            tf.summary.scalar("average accuracy", smooth_accuracy)
             # embedding_conf.tensor_name = embeddings
-            # writer.add_summary(summary, global_step)
+            writer.add_summary(summary, global_step)
             print("Saving model......")
             self.saver.save(self.sess, self.save_dir, global_step=global_step)
-            meta = [i for i in os.listdir(self.data_dir) if '.meta' in i][0]
-            config = projector.ProjectorConfig()
-            # One can add multiple embeddings.
-            embedding = config.embeddings.add()
-            # embedding.tensor_name = summary.name
-            # Link this tensor to its metadata file (e.g. labels).
-            embedding.metadata_path = os.path.join(self.save_dir, meta)
-            # Saves a config file that TensorBoard will read during startup.
-            projector.visualize_embeddings(tf.summary.FileWriter(self.save_dir), config)
+
 
     def test(self, prime_text):
-        sample = self.model.generate(priming_text=prime_text)
+        sample = self.model.generate(self.provider, priming_text=prime_text)
         return sample
 
 def main():
@@ -149,6 +145,40 @@ def main():
     prime_text = None
 
     Freestyle(load_path, prime_text, training)
+
+def generate():
+    with open('configs/config.json','r') as cfgFile:
+        cfg = json.load(cfgFile)
+    num_out = 1000
+    tf.reset_default_graph()
+    # term = " ".join(list(term))
+    data_reader = Provider(cfg["model_params"]["LSTM"]["BATCH_SIZE"],
+                           cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"])
+    print(data_reader.vocabulary)
+    vocabulary = data_reader.vocabulary
+    sess = tf.Session()
+    model = RNNModel(sess,
+                     vocabulary=vocabulary,
+                     batch_size=cfg["model_params"]["LSTM"]["BATCH_SIZE"],
+                     sequence_length=cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"],
+                     hidden_layer_size=cfg["model_params"]["LSTM"]["HIDDEN_LAYER_SIZE"],
+                     cells_size=cfg["model_params"]["LSTM"]["CELLS_SIZE"],
+                     keep_prob=cfg["model_params"]["LSTM"]["TRAIN_KEEP_PROB"],
+                     gradient_clip=cfg["model_params"]["LSTM"]["GRADIENT_CLIP"],
+                     starter_learning_rate=cfg["model_params"]["LSTM"]["STARTER_LEARNING_RATE"],
+                     decay_rate=cfg["model_params"]["LSTM"]["DECAY_RATE"],
+                     training=False
+                     )
+
+    saver = tf.train.Saver()
+    sess.run(tf.global_variables_initializer())
+    _num = str(max([int(i.replace('ckpt-','')) for i in list(set([i.split('.')[1] for i in os.listdir("src/data") if 'aesop.ckpt-' in i]))]))
+    saver.restore(sess, "src/data/aesop.ckpt-{}".format(_num))
+    sample = model.generate(data_reader, priming_text="Im only nineteen but my mind is older ", sample=True, num_out=10000, temperature=.8)
+
+    print(sample)
+    return sample
+
 
 if __name__ == '__main__':
     main()

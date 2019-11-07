@@ -26,8 +26,8 @@ class API(object):
 
     # Create a persistent requests connection
     _session = requests.Session()
-    _session.headers = {'application': 'LyricsGenius',
-       'User-Agent': 'https://github.com/johnwmillr/LyricsGenius'}
+    # _session.headers = {'application': 'LyricsGenius',
+    #    'User-Agent': 'https://github.com/johnwmillr/LyricsGenius'}
     _SLEEP_MIN = 0.2  # Enforce minimum wait time between API calls (seconds)
 
     def __init__(self, client_access_token,
@@ -313,7 +313,10 @@ class Genius(API):
                     info = self.get_song(song_info['id'])
                 else:
                     info = {'song': song_info}
-                song = Song(info, lyrics)
+                try:
+                    song = Song(info, lyrics)
+                except TypeError:
+                    pass
 
                 # Attempt to add the Song to the Artist
                 result = artist.add_song(song, verbose=False)
@@ -337,7 +340,7 @@ class Genius(API):
             print('Done. Found {n} songs.'.format(n=artist.num_songs))
         return artist
 
-    def save_artists(self, artists, filename="artist_lyrics", overwrite=False):
+    def save_artists(self, artists, filename="data/raw/artist_lyrics", overwrite=False):
         """Save lyrics from multiple Artist objects as JSON object
         :param artists: List of Artist objects to save lyrics from
         :param filename: Name of output file (json)

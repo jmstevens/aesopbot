@@ -84,5 +84,7 @@ target/
 data/processed/songs/*
 *.mp3
 *.png
+training_checkpoints/*
 # Mac OS-specific storage files
 .DS_Store
+

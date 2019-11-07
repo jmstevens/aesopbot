@@ -8,7 +8,7 @@ PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BUCKET = hiphopbot
 PROFILE = default
 PROJECT_NAME = aesopbot
-PYTHON_INTERPRETER = python3
+PYTHON_INTERPRETER = python
 
 ifeq (,$(shell which conda))
 HAS_CONDA=False
@@ -24,8 +24,8 @@ endif
 requirements: test_environment
 	pip install -U pip setuptools wheel
 	pip install -r requirements.txt
-	$(PYTHON_INTERPRETER) -m spacy download en
-	$(PYTHON_INTERPRETER) -m spacy download en_core_web_lg
+	# $(PYTHON_INTERPRETER) -m spacy download en
+	# $(PYTHON_INTERPRETER) -m spacy download en_core_web_lg
 ## Make Dataset
 data: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py
@@ -37,9 +37,8 @@ clean:
 	rm -rf src/data/tensorboard/*
 	rm -rf src/data/*.ckpt*
 	rm -rf src/data/checkpoint
-  # rm data/raw/artist_lyrics.json
-	# rm data/processed/*.txt
-
+	rm -rf training_checkpoints/*
+	echo '' > nohup.out
 clean_data:
 	# rm -rf data/raw/*
 	# rm data/processed/*.csv
@@ -83,21 +82,24 @@ else
 	@echo ">>> New virtualenv created. Activate with:\nworkon $(PROJECT_NAME)"
 endif
 
-# Get Data
+## Get Data
 get_data:
 	$(PYTHON_INTERPRETER) -c "import src.features.get_data as _b; _b.main()"
 
-# Transform data
+## Transform data
 transform:
 	$(PYTHON_INTERPRETER) -c "import src.features.transform_data as _t; _t.main()"
 # transform:
 # 	$(PYTHON_INTERPRETER) -c "from src.features.build import Dataset; Dataset().save_artist()"
 
-# Train model
+## Train model
 train:
 	$(PYTHON_INTERPRETER) -m src.models.train
 
-# Make predictions
+test:
+	$(PYTHON_INTERPRETER) -c "import src.models.train as _b; _b.generate()"
+
+## Make predictions
 launch_bot:
 	$(PYTHON_INTERPRETER) -m src.discord.basic
 

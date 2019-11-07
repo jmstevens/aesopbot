@@ -8,6 +8,7 @@ import os
 import tensorflow as tf
 import boto3
 import json
+import asyncio
 
 from src.models.rnn_model import RNNModel
 from src.features.build import Provider
@@ -20,6 +21,8 @@ client.close()
 
 @bot.event
 async def on_ready():
+    global model
+    global data_reader
     print('Logged in as')
     print(bot.user.name)
     print(bot.user.id)
@@ -93,34 +96,70 @@ async def gif(*term: str):
     await bot.say(_gif)
 
 @bot.command()
-async def freestyle(term: str, bars: int):
-    """Aesop Raps"""
-    num_out = bars * 12
-    tf.reset_default_graph()
-    # term = " ".join(list(term))
-    data_reader = Provider(10, 25)
-    vocabulary = data_reader.vocabulary
-    sess = tf.Session()
-    model = RNNModel(sess,
-                     vocabulary=vocabulary,
-                     batch_size=cfg["model_params"]["LSTM"]["BATCH_SIZE"],
-                     sequence_length=cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"],
-                     hidden_layer_size=cfg["model_params"]["LSTM"]["HIDDEN_LAYER_SIZE"],
-                     cells_size=cfg["model_params"]["LSTM"]["CELLS_SIZE"],
-                     keep_prob=cfg["model_params"]["LSTM"]["TRAIN_KEEP_PROB"],
-                     gradient_clip=cfg["model_params"]["LSTM"]["GRADIENT_CLIP"],
-                     starter_learning_rate=cfg["model_params"]["LSTM"]["STARTER_LEARNING_RATE"],
-                     use_peepholes=cfg["model_params"]["LSTM"]["USE_PEEPHOLES"],
-                     training=False
-                     )
+async def freestyle_topic(*term: str):
+    """Aesop Raps about a specific topic"""
+    global model
+    global data_reader
+    print(term)
+    term = "".join(list(term))
+    # if '|' in term:
+    #     _t_split = term.split('|')
+    #     term = _t_split[0]
+    #     temperature = float(_t_split[1].replace(' ',''))
+    #     num_out = int(_t_split[2].replace(' ',''))
+    # else:
+    #     temperature = .9
+    print(term)
+    sample = generate_text(model, term, .95, 1000)
+    # sample = model.generate(data_reader, priming_text=term, sample=True, num_out=num_out, temperature=temperature)
+    # sample = '\n'.join([' '.join(i.split()) for i in sample.split('\n')])
 
-    saver = tf.train.Saver()
-    sess.run(tf.global_variables_initializer())
-    _num = str(max([int(i.replace('ckpt-','')) for i in list(set([i.split('.')[1] for i in os.listdir("src/data") if 'aesop.ckpt-' in i]))]))
-    saver.restore(sess, "src/data/aesop.ckpt-{}".format(_num))
-    sample = model.generate(priming_text=term, sample=True, num_out=num_out)
-    sample = '\n'.join([' '.join(i.split()) for i in sample.split('\n')])
     await bot.say(sample)
+
+@bot.command()
+async def freestyle_random():
+    """Aesop Raps: Random Aesop lyrics are fed in to seed the generator"""
+    global model
+    global data_reader
+    # print(random.random(data_reader.lyrics))
+    sample = generate_text(model, "im only nineteen but my mind is older", .95, 1000)
+    #sample = model.generate(data_reader, priming_text="hip hop ", sample=True, num_out=2000, temperature=.4)
+
+    await bot.say(sample)
+
+@bot.command()
+async def aesop_stats(*term: str):
+    global model
+    global data_reader
+    stats = dict()
+    stats['model_info'] = model.__dict__
+    stats['iterator_info'] = model.__dict__
+    print(term)
+    if not isinstance(term, tuple):
+        await bot.say("I'm just a dumb bot right now.\nA real normie.\nA real yitbosy fucker.\n.\nsBut....\n...\n....\nI can only hand a single argument.\n\n\n...\n...BRO!")
+    else:
+        if len(term) > 1 and len(term) < 3:
+            if term[0] == 'listparams':
+                print(list(stats.keys()))
+                if term[1] == 'model':
+                    await bot.say(stats['model_info'])
+                elif term[1] == 'iterator':
+                    await bot.say(stats['iterator_info'])
+                else:
+                    print(list(stats.keys()))
+                    await bot.say("Pick from either {0} or {1}".format(stats.keys()))
+            elif term[0] == "list":
+                try:
+                    config = stats[term[1]]
+                    await bot.say(config)
+                except KeyError:
+                    await bot.say("Hey yo thats not a parameter my brain is not familiar with\nYou should try ?listparams")
+        else:
+            await bot.say("Idk man. You're on your own.\nYou do know I have documentaion right?.\nTry ?help")
+
+
+
+
 
 # @bot.command()
 # async def speak():
@@ -134,4 +173,31 @@ async def freestyle(term: str, bars: int):
 with open('configs/config.json','r') as cfgFile:
     cfg = json.load(cfgFile)
     # discord_params = cfg['discord']['token']
+# global model
+# global data_reader
+# tf.reset_default_graph()
+# # term = " ".join(list(term))
+# data_reader = Provider(cfg["model_params"]["LSTM"]["BATCH_SIZE"],
+#                        cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"])
+#
+# vocabulary = data_reader.vocabulary
+# sess = tf.Session()
+# model = RNNModel(sess,
+#                  vocabulary=vocabulary,
+#                  batch_size=cfg["model_params"]["LSTM"]["BATCH_SIZE"],
+#                  sequence_length=cfg["model_params"]["LSTM"]["SEQUENCE_LENGTH"],
+#                  hidden_layer_size=cfg["model_params"]["LSTM"]["HIDDEN_LAYER_SIZE"],
+#                  cells_size=cfg["model_params"]["LSTM"]["CELLS_SIZE"],
+#                  keep_prob=cfg["model_params"]["LSTM"]["TRAIN_KEEP_PROB"],
+#                  gradient_clip=cfg["model_params"]["LSTM"]["GRADIENT_CLIP"],
+#                  starter_learning_rate=cfg["model_params"]["LSTM"]["STARTER_LEARNING_RATE"],
+#                  decay_rate=cfg["model_params"]["LSTM"]["DECAY_RATE"],
+#                  training=False
+#                  )
+#
+# saver = tf.train.Saver()
+# sess.run(tf.global_variables_initializer())
+# _num = str(max([int(i.replace('ckpt-','')) for i in list(set([i.split('.')[1] for i in os.listdir("src/data") if 'aesop.ckpt-' in i]))]))
+# saver.restore(sess, "src/data/aesop.ckpt-{}".format(_num))
+print('------')
 bot.run(cfg['discord']['token'])

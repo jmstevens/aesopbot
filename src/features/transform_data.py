@@ -1,10 +1,11 @@
-from src.features.genius.api import API, Genius
+# from src.features.genius.api import API, Genius
 from configs import config
-from src.features.genius.artist import Artist
-from src.features.genius.song import Song
-from src.features.genius.song import Song
+# from src.features.genius.artist import Artist
+# from src.features.genius.song import Song
+# from src.features.genius.song import Song
 import json
 import pickle
+import io
 
 
 class Transform():
@@ -63,9 +64,9 @@ class Transform():
                     new_word = []
 
                 if words != []:
-                    words = words + ['<eol>']
+                    words = words + ['\n']
                     verses.append(words)
-            verses = verses + ['<eov>']
+            verses = verses + ['\n\n']
             verses_list.append(verses)
 
         self.verses_list = verses_list
@@ -81,14 +82,19 @@ class Transform():
                 else:
                     verse = verse + ' ' + j
                 verses.append(verse.lstrip())
-        verses = [i.replace('-----protools----- <eol>','') for i in verses if '<eov>' in i]
+
+        verses = [i.strip('\'"') for i in verses if '\n\n' in i]
         self.verses = verses
         return verses
 
     def save(self):
         with open("data/processed/verses.txt", "wb") as fp:   #Pickling
+            # fp.write(''.join(self.verses).strip('\'"'))
             pickle.dump(self.verses, fp)
+        # with io.open("data/processed/verses.txt", 'w', encoding='utf8') as f:
+        #     f.write(' '.join(self.verses))
 
 def main():
     _t = Transform()
+    # print(_t.verses)
     _t.save()

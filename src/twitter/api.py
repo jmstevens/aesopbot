@@ -4,6 +4,8 @@ import json
 from datetime import datetime
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer, TweetTokenizer
+import numpy as np
+from PIL import Image
 
 from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 
@@ -34,18 +36,21 @@ def create_wordcloud(number, USERNAME):
     data = api.user_timeline(USERNAME, count=number)
     print([i.text for i in data])
     datasetJSON = [i._json for i in data]
-
+    mask = np.array(Image.open("../Downloads/Donald-Trump-0.jpg"))
+    # print(mask)
     # Filter
-    tweets = [i.text for i in data if not i.text.startswith('RT')]
+    tweets = [i.text for i in data]
     tweets_url_removed = [re.sub(r"http\S+", '', i) for i in tweets]
     tokenizer = RegexpTokenizer(r'\w+')
     tweets_joined = tokenizer.tokenize(' '.join(tweets_url_removed))
     tweets_tknzr = TweetTokenizer(strip_handles=True, reduce_len=False, preserve_case=False)
-    tweets_processed = tweets_tknzr.tokenize(' '.join(tweets_joined))
+    tweets_processed = [i for i in tweets_tknzr.tokenize(' '.join(tweets_joined)) if i != 'president' and i != 'RT']
     print(tweets_processed)
     # Word cloud
-    wordcloud = WordCloud().generate(' '.join(tweets_processed))
-    wordcloud.to_file('test.png')
+    wordcloud = WordCloud(width=512, height=512, background_color='white').generate(' '.join(tweets_processed))
+    # create coloring from image
+    wordcloud.to_file(f'test1_{USERNAME}.png')
+
 
 if __name__ == "__main__":
-    create_wordcloud(200, USERNAME)
+    create_wordcloud(50, USERNAME)

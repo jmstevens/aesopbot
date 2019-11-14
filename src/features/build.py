@@ -7,6 +7,7 @@ import numpy as np
 import json
 import tensorflow_datasets as tfds
 import pickle
+from nltk.tokenize import WordPunctTokenizer
 
 
 class Lyrics:
@@ -17,31 +18,31 @@ class Lyrics:
     def __init__(self, BATCH_SIZE, VOCAB_SIZE):
         self.BATCH_SIZE = BATCH_SIZE
         self.VOCAB_SIZE = VOCAB_SIZE
-        # self.tokenizer = RegexpTokenizer(r'\w')
+
         data_dir = 'data/processed/verses.txt'
         with open(data_dir, "rb") as fp:   # Unpickling
             lyrics = pickle.load(fp)
+        # [print(i) for i in lyrics]
+        # lyrics = [' \n '.join(tokenizer.tokenize(i)) for i in lyrics]
         lyrics = np.array(lyrics)
         arr = [[j for j in i.split(' \n ') if len(j) > 1 and '\n\n' != j] for i in list(np.array(lyrics)) if len(i.split(' \n ')) > 0]
         flattened_list = np.asarray([y for x in arr for y in x])
         print(flattened_list)
         self.target = flattened_list[1:]
         self.train = flattened_list[:-1]
-        # self.final_lyrics = tf.data.Dataset.from_tensor_slices((train, target))
-        # self.final_lyrics = docs#np.array(tf.keras.preprocessing.text.text_to_word_sequence(lyrics))
 
-    def build(self):
+    def build(self, pad_shape=40):
         _sequences = tf.data.Dataset.from_tensor_slices((self.train, self.target))
-        # next(sequences)
-        # print(sequences)
 
         def split_input_target(chunk):
             input_text = chunk[:-1]
             target_text = chunk[1:]
             return input_text, target_text
 
-        self.tokenizer_en = tfds.features.text.SubwordTextEncoder.build_from_corpus((i.numpy() for i,_ in _sequences),target_vocab_size=self.VOCAB_SIZE)
-        self.tokenizer_pt = tfds.features.text.SubwordTextEncoder.build_from_corpus((i.numpy() for _,i in _sequences),target_vocab_size=self.VOCAB_SIZE)
+        self.tokenizer_en = tfds.features.text.SubwordTextEncoder.build_from_corpus((i.numpy() for i,_ in _sequences),
+                                                                                    target_vocab_size=self.VOCAB_SIZE)
+        self.tokenizer_pt = tfds.features.text.SubwordTextEncoder.build_from_corpus((i.numpy() for _,i in _sequences),
+                                                                                    target_vocab_size=self.VOCAB_SIZE)
 
         sample_string = 'Transformer is awesome.'
 
@@ -57,28 +58,37 @@ class Lyrics:
 
         BUFFER_SIZE = 20000
         BATCH_SIZE = 64
+        TAKE_SIZE = 5000
+
 
         def encode(lang1, lang2):
-            lang1 = self.tokenizer_pt.encode(lang1.numpy())
-            lang2 = self.tokenizer_en.encode(lang2.numpy())
+            lang1 = self.tokenizer_pt.encode(lang1.numpy())# + [self.tokenizer_pt.vocab_size+1]
+            lang2 = self.tokenizer_en.encode(lang2.numpy())# + [self.tokenizer_en.vocab_size+1]
             return lang1, lang2
 
         def tf_encode(pt, en):
             return tf.py_function(encode, [pt, en], [tf.int64, tf.int64])
 
         def filter_max_length(x, y):
-            return tf.logical_and(tf.size(x) <= 40,
-                                  tf.size(y) <= 40)
+            return tf.logical_and(tf.size(x) <= pad_shape,
+                                  tf.size(y) <= pad_shape)
 
-        train_dataset = _sequences.map(tf_encode)
-        train_dataset = train_dataset.filter(filter_max_length)
+        dataset = _sequences.map(tf_encode)
+        dataset = dataset.filter(filter_max_length)
         # cache the dataset to memory to get a speedup while reading from it.
-        train_dataset = train_dataset.cache()
+        # dataset = dataset.cache()
+        #.shuffle(self.BUFFER_SIZE).cache()
+        dataset = dataset.cache().padded_batch(self.BATCH_SIZE,
+                                             padded_shapes=([pad_shape],
+                                                            [pad_shape]),
+                                             drop_remainder=True)
+        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-        train_dataset = train_dataset.shuffle(self.BUFFER_SIZE).skip(TAKE_SIZE).padded_batch(self.BATCH_SIZE, padded_shapes=([40], [40]), drop_remainder=True)
-        train_dataset = train_dataset.prefetch(tf.data.experimental.AUTOTUNE)
+        # test_dataset = dataset.shuffle(self.BUFFER_SIZE).cache().take(TAKE_SIZE)\
+        #                       .padded_batch(self.BATCH_SIZE,
+        #                                     padded_shapes=([pad_shape],
+        #                                                    [pad_shape]),
+        #                                     drop_remainder=True)
+        # test_dataset = test_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-        test_dataset = test_dataset.shuffle(self.BUFFER_SIZE).take(TAKE_SIZE).padded_batch(self.BATCH_SIZE, padded_shapes=([40], [40]), drop_remainder=True)
-        test_dataset = test_dataset.prefetch(tf.data.experimental.AUTOTUNE)
-
-        return train_dataset, test_dataset
+        return dataset

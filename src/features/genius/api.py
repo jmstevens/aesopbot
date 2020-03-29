@@ -31,7 +31,7 @@ class API(object):
     _SLEEP_MIN = 0.2  # Enforce minimum wait time between API calls (seconds)
 
     def __init__(self, client_access_token,
-                 response_format='plain', timeout=5, sleep_time=0.5):
+                 response_format='plain', timeout=5, sleep_time=1):
         """ Genius API Constructor
         :param client_access_token: API key provided by Genius
         :param response_format: API response format (dom, plain, html)
@@ -292,44 +292,44 @@ class Genius(API):
         reached_max_songs = False
         while not reached_max_songs:
             songs_on_page = self.get_artist_songs(artist_id, sort, per_page, page)
-
+            if songs_on_page:
             # Loop through each song on page of search results
-            for song_info in songs_on_page['songs']:
-                # Check if song is valid (e.g. has title, contains lyrics)
-                has_title = ('title' in song_info)
-                has_lyrics = self._result_is_lyrics(song_info['title'])
-                song_is_valid = has_title and (has_lyrics or (not self.skip_non_songs))
+                for song_info in songs_on_page['songs']:
+                    # Check if song is valid (e.g. has title, contains lyrics)
+                    has_title = ('title' in song_info)
+                    has_lyrics = self._result_is_lyrics(song_info['title'])
+                    song_is_valid = has_title and (has_lyrics or (not self.skip_non_songs))
 
-                # Reject non-song results (e.g. Linear Notes, Tracklists, etc.)
-                if not song_is_valid:
-                    if self.verbose:
-                        s = song_info['title'] if has_title else "MISSING TITLE"
-                        print('"{s}" is not valid. Skipping.'.format(s=s))
-                    continue
+                    # Reject non-song results (e.g. Linear Notes, Tracklists, etc.)
+                    if not song_is_valid:
+                        if self.verbose:
+                            s = song_info['title'] if has_title else "MISSING TITLE"
+                            print('"{s}" is not valid. Skipping.'.format(s=s))
+                        continue
 
-                # Create the Song object from lyrics and metadata
-                lyrics = self._scrape_song_lyrics_from_url(song_info['url'])
-                if get_full_info:
-                    info = self.get_song(song_info['id'])
-                else:
-                    info = {'song': song_info}
-                try:
-                    song = Song(info, lyrics)
-                except TypeError:
-                    pass
+                    # Create the Song object from lyrics and metadata
+                    lyrics = self._scrape_song_lyrics_from_url(song_info['url'])
+                    if get_full_info:
+                        info = self.get_song(song_info['id'])
+                    else:
+                        info = {'song': song_info}
+                    try:
+                        song = Song(info, lyrics)
+                    except TypeError:
+                        pass
 
-                # Attempt to add the Song to the Artist
-                result = artist.add_song(song, verbose=False)
-                if result == 0 and self.verbose:
-                    print('Song {n}: "{t}"'.format(n=artist.num_songs,
-                                                   t=song.title))
+                    # Attempt to add the Song to the Artist
+                    result = artist.add_song(song, verbose=False)
+                    if result == 0 and self.verbose:
+                        print('Song {n}: "{t}"'.format(n=artist.num_songs,
+                                                       t=song.title))
 
-                # Exit search if the max number of songs has been met
-                reached_max_songs = max_songs and artist.num_songs >= max_songs
-                if reached_max_songs:
-                    if self.verbose:
-                        print('\nReached user-specified song limit ({m}).'.format(m=max_songs))
-                    break
+                    # Exit search if the max number of songs has been met
+                    reached_max_songs = max_songs and artist.num_songs >= max_songs
+                    if reached_max_songs:
+                        if self.verbose:
+                            print('\nReached user-specified song limit ({m}).'.format(m=max_songs))
+                        break
 
             # Move on to next page of search results
             page = songs_on_page['next_page']

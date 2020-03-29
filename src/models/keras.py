@@ -3,7 +3,7 @@ import tensorflow
 import tensorflow as tf
 from tqdm import tqdm
 import time
-from src.features.build import Lyrics
+from features.build import Lyrics
 import numpy as np
 import datetime as dt
 
@@ -59,7 +59,7 @@ dataset = lyrics.build(pad_shape=40)
 #     print(example_batch_predictions.shape, "# (batch_size, sequence_length, vocab_size)")
 
 model.summary()
-optimizer = tf.keras.optimizers.Adam()
+optimizer = tf.keras.optimizers.Adam(lr=0.01)
 
 # Directory where the checkpoints will be saved
 checkpoint_dir = './training_checkpoints'

@@ -5,7 +5,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pandas as pd
 import numpy as np
 import json
-import tensorflow_datasets as tfds
+#import tensorflow_datasets as tfds
 import pickle
 from nltk.tokenize import WordPunctTokenizer
 
@@ -22,6 +22,7 @@ class Lyrics:
         data_dir = 'data/processed/verses.txt'
         with open(data_dir, "rb") as fp:   # Unpickling
             lyrics = pickle.load(fp)
+        self.lyrics = lyrics
         # [print(i) for i in lyrics]
         # lyrics = [' \n '.join(tokenizer.tokenize(i)) for i in lyrics]
         lyrics = np.array(lyrics)
@@ -92,3 +93,58 @@ class Lyrics:
         # test_dataset = test_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
         return dataset
+
+    def build_char_dataset(self):
+        text = ' '.join(self.lyrics) 
+        vocab = sorted(set(' '.join(self.lyrics)))
+        print(f'Vocab length is {len(vocab)}')
+
+        char2idx = {u:i for i, u in enumerate(vocab)}
+        idx2char = np.array(vocab)
+
+        text_as_int = np.array([char2idx[c] for c in text])
+
+        seq_length = 100
+        examples_per_epoch = len(text)//(seq_length+1)
+
+        # Create training examples / targets
+        char_dataset = tf.data.Dataset.from_tensor_slices(text_as_int)
+
+        for i in char_dataset.take(5):
+            print(idx2char[i.numpy()])
+
+        
+        sequences = char_dataset.batch(seq_length+1, drop_remainder=True)
+
+        for item in sequences.take(5):
+            print(repr(''.join(idx2char[item.numpy()])))
+
+        def split_input_target(chunk):
+            input_text = chunk[:-1]
+            target_text = chunk[1:]
+            return input_text, target_text
+
+        dataset = sequences.map(split_input_target)
+
+        sequences = char_dataset.batch(seq_length+1, drop_remainder=True)
+
+        for item in sequences.take(10):
+            print(repr(''.join(idx2char[item.numpy()])))
+
+        def split_input_target(chunk):
+            input_text = chunk[:-1]
+            target_text = chunk[1:]
+            return input_text, target_text
+
+        dataset = sequences.map(split_input_target)
+
+        for input_example, target_example in  dataset.take(1):
+            print ('Input data: ', repr(''.join(idx2char[input_example.numpy()])))
+            print ('Target data:', repr(''.join(idx2char[target_example.numpy()])))
+        
+        dataset = dataset.batch(self.BATCH_SIZE, drop_remainder=True)
+        return dataset
+
+if __name__ == '__main__':
+    _l = Lyrics(32, 100)
+    _l.build_char_dataset()

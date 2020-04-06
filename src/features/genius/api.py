@@ -331,6 +331,7 @@ class Genius(API):
                             print('\nReached user-specified song limit ({m}).'.format(m=max_songs))
                         break
 
+
             # Move on to next page of search results
             page = songs_on_page['next_page']
             if page is None:

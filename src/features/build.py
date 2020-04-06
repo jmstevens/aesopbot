@@ -40,6 +40,7 @@ class Lyrics:
             target_text = chunk[1:]
             return input_text, target_text
 
+
         self.tokenizer_en = tfds.features.text.SubwordTextEncoder.build_from_corpus((i.numpy() for i,_ in _sequences),
                                                                                     target_vocab_size=self.VOCAB_SIZE)
         self.tokenizer_pt = tfds.features.text.SubwordTextEncoder.build_from_corpus((i.numpy() for _,i in _sequences),

@@ -1,13 +1,23 @@
-import os
-import tensorflow
+import tensorflow 
 import tensorflow as tf
-from tqdm import tqdm
-import time
-from features.build import Lyrics
+import json 
+import os
+import pickle
 import numpy as np
-
-import datetime as dt
-
+import string, os 
+from gensim.models import KeyedVectors
+import gensim.downloader as api
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, Input, Dropout, LSTM, Activation
+from tensorflow.keras.layers import Embedding
+from tensorflow.keras.preprocessing import sequence
+from tensorflow.keras.initializers import glorot_uniform
+from tensorflow.keras.callbacks import LambdaCallback
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+import tensorflow.keras.utils as ku 
+import random
+import sys
 # NOTE: This just a sandbox script, to be treated as a snabox while learning
 # tensorflow 2.0. Need to seperate the Lyrics builder class after understadning
 # the tf.Data api
@@ -33,20 +43,37 @@ BATCH_SIZE = 64
 EPOCHS = 50
 
 def build_model(vocab_size, embedding_dim, rnn_units, batch_size, dropout):
-    model = tf.keras.Sequential([
+    input_shape = (max_sequence_len,)
+    print(max_sequence_len)
+    sentence_indices = Input(shape=input_shape, dtype='int32')
+        
+    # Create the embedding layer pretrained with GloVe Vectors (≈1 line)
+    embedding_layer = pretrained_embedding_layer(word_vectors, tokenizer.word_index)
 
-        tf.keras.layers.Embedding(vocab_size+1, embedding_dim,
-                              batch_input_shape=[batch_size, None], mask_zero=True),
-        tf.keras.layers.GRU(rnn_units,
-                             return_sequences=True,
-                             stateful=True,
-                             recurrent_initializer='glorot_uniform'),
-        tf.keras.layers.GRU(rnn_units,
-                             return_sequences=True,
-                             stateful=True,
-                             recurrent_initializer='glorot_uniform'),
-        tf.keras.layers.Dense(vocab_size)
-        ])
+    # Propagate sentence_indices through your embedding layer
+    # (See additional hints in the instructions).
+    embeddings = embedding_layer(sentence_indices) 
+
+    # Propagate the embeddings through an LSTM layer with 128-dimensional hidden state
+    # The returned output should be a batch of sequences.
+    X = LSTM(units=128, return_sequences=True)(embeddings)
+    # Add dropout with a probability of 0.5
+    X = Dropout(rate=0.5)(X)
+    # Propagate X trough another LSTM layer with 128-dimensional hidden state
+    # The returned output should be a single hidden state, not a batch of sequences.
+    X = LSTM(units=128, return_sequences=False)(X)
+    # Add dropout with a probability of 0.5
+    X = Dropout(rate=0.5)(X)
+    # Propagate X through a Dense layer with 5 units
+    X = Dense(units=total_words)(X)
+    # Add a softmax activation
+    X = Activation('softmax')(X)
+
+
+
+    # Create Model instance which converts sentence_indices into X.
+    model = Model(inputs=sentence_indices, outputs=X)
+    model.summary()
     return model
 
 

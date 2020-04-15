@@ -79,7 +79,7 @@ target/
 
 # exclude data from source control by default
 /src/data/tensorboard/
-/data/raw/
+/data/*
 /src/data/*ckpt*
 data/processed/songs/*
 *.mp3

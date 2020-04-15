@@ -86,7 +86,7 @@ model = build_model(
 
 lyrics = Lyrics(BATCH_SIZE, VOCAB_SIZE)
 
-dataset = lyrics.build(pad_shape=40)
+dataset = lyrics.build_char(pad_shape=40)
 
 # for input_example_batch, target_example_batch in dataset.take(1):
 #     example_batch_predictions = model(input_example_batch)

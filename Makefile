@@ -35,6 +35,7 @@ clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
 	rm -rf src/data/tensorboard/*
+	rm -rf src/data/aesopbot*
 	rm -rf src/data/*.ckpt*
 	rm -rf src/data/checkpoint
 	rm -rf training_checkpoints/*

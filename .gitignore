@@ -88,3 +88,11 @@ training_checkpoints/*
 # Mac OS-specific storage files
 .DS_Store
 
+# all logs
+log/*
+
+# nohup files
+nohup.out
+
+# data
+data/*

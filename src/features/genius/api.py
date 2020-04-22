@@ -112,7 +112,7 @@ class Genius(API):
 
     def __init__(self, client_access_token,
                  response_format='plain', timeout=5, sleep_time=0.5,
-                 verbose=True, remove_section_headers=False,
+                 verbose=True, remove_section_headers=True,
                  skip_non_songs=True, excluded_terms=[],
                  replace_default_terms=False):
         """ Genius Client Constructor
@@ -181,7 +181,7 @@ class Genius(API):
         return title_is_match and result_artist == self._clean_str(artist)
 
     def search_song(self, title, artist="",
-                    get_full_info=True, take_first_result=False):
+                    get_full_info=False, take_first_result=False):
         """ Search Genius.com for lyrics to a specific song
         :param title: Song title to search for
         :param artist: Name of the artist
@@ -248,7 +248,7 @@ class Genius(API):
         return None
 
     def search_artist(self, artist_name, max_songs=None, sort='title',
-                      per_page=20, get_full_info=True,
+                      per_page=20, get_full_info=False,
                       take_first_result=False):
         """Search Genius.com for songs by the specified artist.
         Returns an Artist object containing artist's songs.

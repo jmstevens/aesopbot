@@ -5,9 +5,10 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pandas as pd
 import numpy as np
 import json
-#import tensorflow_datasets as tfds
+import tensorflow_datasets as tfds
 import pickle
 from nltk.tokenize import WordPunctTokenizer
+from src.features.transform_data import Transform
 
 
 class Lyrics:
@@ -18,19 +19,19 @@ class Lyrics:
     def __init__(self, BATCH_SIZE, VOCAB_SIZE):
         self.BATCH_SIZE = BATCH_SIZE
         self.VOCAB_SIZE = VOCAB_SIZE
-
-        data_dir = 'data/processed/verses.txt'
-        with open(data_dir, "rb") as fp:   # Unpickling
-            lyrics = pickle.load(fp)
-        self.lyrics = lyrics
+        _t = Transform()
+        # data_dir = 'data/processed/verses.txt'
+        # with open(data_dir, "rb") as fp:   # Unpickling
+        #     lyrics = pickle.load(fp)
+        lyrics = _t.verse_lines
         # [print(i) for i in lyrics]
         # lyrics = [' \n '.join(tokenizer.tokenize(i)) for i in lyrics]
-        lyrics = np.array(lyrics)
-        arr = [[j for j in i.split(' \n ') if len(j) > 1 and '\n\n' != j] for i in list(np.array(lyrics)) if len(i.split(' \n ')) > 0]
-        flattened_list = np.asarray([y for x in arr for y in x])
-        print(flattened_list)
-        self.target = flattened_list[1:]
-        self.train = flattened_list[:-1]
+        # lyrics = np.array(lyrics)
+        # arr = [[j for j in i.split(' \n ') if len(j) > 1 and '\n\n' != j] for i in list(np.array(lyrics)) if len(i.split(' \n ')) > 0]
+        flattened_list = [y for x in lyrics for y in x]
+        
+        self.target = flattened_list[::2]
+        self.train = flattened_list[1::2]
 
     def build(self, pad_shape=40):
         _sequences = tf.data.Dataset.from_tensor_slices((self.train, self.target))
@@ -80,7 +81,7 @@ class Lyrics:
         # cache the dataset to memory to get a speedup while reading from it.
         # dataset = dataset.cache()
         #.shuffle(self.BUFFER_SIZE).cache()
-        dataset = dataset.cache().padded_batch(self.BATCH_SIZE,
+        dataset = dataset.shuffle(BUFFER_SIZE).padded_batch(self.BATCH_SIZE,
                                              padded_shapes=([pad_shape],
                                                             [pad_shape]),
                                              drop_remainder=True)
@@ -96,13 +97,15 @@ class Lyrics:
         return dataset
 
     def build_char_dataset(self):
-        text = ' '.join(self.lyrics) 
+        text = ' '.join(self.lyrics)
         vocab = sorted(set(' '.join(self.lyrics)))
+        self.vocab = vocab
         print(f'Vocab length is {len(vocab)}')
 
         char2idx = {u:i for i, u in enumerate(vocab)}
         idx2char = np.array(vocab)
-
+        self.char2idx = char2idx
+        self.idx2char = idx2char
         text_as_int = np.array([char2idx[c] for c in text])
 
         seq_length = 100
@@ -114,7 +117,7 @@ class Lyrics:
         for i in char_dataset.take(5):
             print(idx2char[i.numpy()])
 
-        
+
         sequences = char_dataset.batch(seq_length+1, drop_remainder=True)
 
         for item in sequences.take(5):
@@ -142,7 +145,7 @@ class Lyrics:
         for input_example, target_example in  dataset.take(1):
             print ('Input data: ', repr(''.join(idx2char[input_example.numpy()])))
             print ('Target data:', repr(''.join(idx2char[target_example.numpy()])))
-        
+
         dataset = dataset.batch(self.BATCH_SIZE, drop_remainder=True)
         return dataset
 

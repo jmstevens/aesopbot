@@ -1,10 +1,10 @@
-import tensorflow 
+import tensorflow
 import tensorflow as tf
-import json 
+import json
 import os
 import pickle
 import numpy as np
-import string, os 
+import string, os
 from gensim.models import KeyedVectors
 import gensim.downloader as api
 from tensorflow.keras.models import Model
@@ -15,7 +15,7 @@ from tensorflow.keras.initializers import glorot_uniform
 from tensorflow.keras.callbacks import LambdaCallback, ModelCheckpoint
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-import tensorflow.keras.utils as ku 
+import tensorflow.keras.utils as ku
 from sklearn.model_selection import train_test_split
 import random
 import sys
@@ -23,40 +23,43 @@ from datetime import date
 from collections import Counter
 import matplotlib.pyplot as plt
 from src.features.build import Lyrics
+from src.features.transform_data import Transform
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 today = date.today()
 # Load vectors directly from the file
-word_vectors = api.load("glove-twitter-100")
+word_vectors = api.load("glove-twitter-25")
 num_words = 10000
-with open('configs/config.json','r') as cfgFile:
-    cfg = json.load(cfgFile)
-data_dir = 'data/processed/verses.txt'
+# with open('configs/config.json','r') as cfgFile:
+#     cfg = json.load(cfgFile)
+# data_dir = 'data/processed/verses.txt'
+#
+# with open(data_dir, "rb") as fp:   # Unpickling
+#     lyrics = pickle.load(fp)
 
-with open(data_dir, "rb") as fp:   # Unpickling
-    lyrics = pickle.load(fp)   
-    
 def clean_text(txt):
     txt = "".join(v for v in txt if v not in string.punctuation).lower()
     txt = txt.encode("utf8").decode("ascii",'ignore')
-    return txt 
-
+    return txt
+_t = Transform()
+lyrics = _t.verse_lines
 print(lyrics[0])
-lyrics = np.array(lyrics)
-arr = [[clean_text(j) for j in i.split(' \n ') if len(j) > 1 and '\n\n' != j] for i in list(np.array(lyrics)) if len(i.split(' \n ')) > 0] 
+arr = np.array(lyrics)
+# arr = [[clean_text(j) for j in i.split(' \n ') if len(j) > 1 and '\n\n' != j] for i in list(np.array(lyrics)) if len(i.split(' \n ')) > 0]
 print(arr[0])
 
-np.random.shuffle(arr)
-flattened_list = np.asarray([y for x in arr for y in x if len(y.split()) <= 25])
-tokenizer = Tokenizer(oov_token='<UNK>')
+# np.random.shuffle(arr)
+# flattened_list = [y for x in lyrics for y in x]
+flattened_list = np.asarray([y for x in arr for y in x if len(y.split()) <= 30])
+tokenizer = Tokenizer()
 corpus = flattened_list
-#corpus = [' '.join(i) for i in arr]
+# corpus = [' '.join(i) for i in flattened_list]
 def get_sequence_of_tokens(corpus):
     ## tokenization
     tokenizer.fit_on_texts(corpus)
     total_words = len(tokenizer.word_index) + 1
     print(f'Number of words before downsampling: {total_words}')
-    count_thres = 10
+    count_thres = 1
     low_count_words = [w for w,c in tokenizer.word_counts.items() if c < count_thres]
     for w in low_count_words:
         del tokenizer.word_index[w]
@@ -64,7 +67,7 @@ def get_sequence_of_tokens(corpus):
         del tokenizer.word_counts[w]
     total_words = len(tokenizer.word_index) + 1
     print(f'Number of words after downsampling: {total_words}')
-    # convert data to sequence of tokens 
+    # convert data to sequence of tokens
     input_sequences = []
     for line in corpus:
         token_list = tokenizer.texts_to_sequences([line])[0]
@@ -82,12 +85,12 @@ input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_le
 
 predictors, label = input_sequences[:,:-1],input_sequences[:,-1]
 print(predictors.shape, label.shape)
-X_train, X_test, y_train, y_test = train_test_split(predictors, label, test_size=0.10, shuffle=False, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(predictors, label, test_size=0.10, shuffle=True, random_state=42)
 print(word_vectors.get_vector('word'))
 def pretrained_embedding_layer(word_to_vec_map, word_to_index):
     """
     Creates a Keras Embedding() layer and loads in pre-trained GloVe 50-dimensional vectors.
-    
+
     Arguments:
     word_to_vec_map -- dictionary mapping words to their GloVe vector representation.
     word_to_index -- dictionary mapping from words to their indices in the vocabulary (400,001 words)
@@ -95,7 +98,7 @@ def pretrained_embedding_layer(word_to_vec_map, word_to_index):
     Returns:
     embedding_layer -- pretrained layer Keras instance
     """
-    
+
     vocab_len = len(word_to_index) + 1                  # adding 1 to fit Keras embedding (requirement)
     emb_dim = word_vectors.get_vector("cucumber").shape[0]      # define dimensionality of your GloVe word vectors (= 50)
     emb_dim_one = word_vectors.get_vector("cucumber").shape
@@ -105,16 +108,16 @@ def pretrained_embedding_layer(word_to_vec_map, word_to_index):
     # Initialize the embedding matrix as a numpy array of zeros.
     # See instructions above to choose the correct shape.
     emb_matrix = np.zeros((vocab_len, emb_dim))
-    
+
     # Step 2
-    # Set each row "idx" of the embedding matrix to be 
+    # Set each row "idx" of the embedding matrix to be
     # the word vector representation of the idx'th word of the vocabulary
     for word, idx in word_to_index.items():
         try:
             emb_matrix[idx, :] = word_vectors.get_vector(word)
         except KeyError:
             print(word)
-            emb_matrix[idx, :] = np.random.rand(emb_dim)#np.zeros(word_vectors.get_vector("cucumber").shape)
+            emb_matrix[idx, :] = np.zeros(word_vectors.get_vector("cucumber").shape)
 
     # Step 3
     # Define Keras embedding layer with the correct input and output sizes
@@ -123,37 +126,37 @@ def pretrained_embedding_layer(word_to_vec_map, word_to_index):
     ### END CODE HERE ###
 
     # Step 4 (already done for you; please do not modify)
-    # Build the embedding layer, it is required before setting the weights of the embedding layer. 
+    # Build the embedding layer, it is required before setting the weights of the embedding layer.
     embedding_layer.build((None,)) # Do not modify the "None".  This line of code is complete as-is.
-    
+
     # Set the weights of the embedding layer to the embedding matrix. Your layer is now pretrained.
     embedding_layer.set_weights([emb_matrix])
-    
+
     return embedding_layer
 
 
 
 embedding = pretrained_embedding_layer(word_vectors, tokenizer.word_index)
-input_shape = (max_sequence_len,)
+input_shape = (max_sequence_len,64)
 print(max_sequence_len)
 sentence_indices = Input(shape=input_shape, dtype='int32')
-    
+
 # Create the embedding layer pretrained with GloVe Vectors (≈1 line)
 embedding_layer = pretrained_embedding_layer(word_vectors, tokenizer.word_index)
 
 # Propagate sentence_indices through your embedding layer
 # (See additional hints in the instructions).
-embeddings = embedding_layer(sentence_indices) 
+embeddings = embedding_layer(sentence_indices)
 
 # Propagate the embeddings through an LSTM layer with 128-dimensional hidden state
 # The returned output should be a batch of sequences.
-X = LSTM(units=2056, return_sequences=True)(embeddings)
+X = LSTM(units=2048, return_sequences=True, batch_size=64, stateful=True)(embeddings)
 #X = BatchNormalization(axis=-1)(X)
 # Add dropout with a probability of 0.5
 X = Dropout(rate=0.5)(X)
 # Propagate X trough another LSTM layer with 128-dimensional hidden state
 # The returned output should be a single hidden state, not a batch of sequences.
-X = LSTM(units=2056, return_sequences=False)(X)
+X = LSTM(units=2048, return_sequences=False, stateful=True)(X)
 # Add dropout with a probability of 0.5
 #X = BatchNormalization(axis=-1)(X)
 X = Dropout(rate=0.5)(X)
@@ -195,7 +198,7 @@ def on_epoch_end(epoch, _):
         for i in range(100):
             #x_pred = [tokenizer.word_index[i] for i in sentence.split()]
             #x_pred = np.array(pad_sequences([[tokenizer.word_index[i] for i in sentence.split()]], maxlen=max_sequence_len, padding='post'))
-            
+
             x_pred = np.array(pad_sequences(tokenizer.texts_to_sequences([sentence]), maxlen=max_sequence_len, padding='post'))
             preds = model.predict(x_pred, verbose=0)[0]
             next_index = sample(preds, diversity)
@@ -203,7 +206,7 @@ def on_epoch_end(epoch, _):
             next_char = ' ' + tokenizer.index_word[next_index]
             #except KeyError:
             #    next_char = ''
-            
+
             sentence = sentence + next_char
 
             sys.stdout.write(next_char)
@@ -244,4 +247,3 @@ date = today.strftime("%m_%d_%y")
 model.save(f'data/aesopbot_{date}.hd5')
 model.evaluate(X_test, y_test, batch_size = 64)
 model.save(f'data/aesopbot_{date}.hd5')
-

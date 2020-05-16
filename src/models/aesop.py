@@ -51,6 +51,7 @@ print(arr[0])
 # np.random.shuffle(arr)
 # flattened_list = [y for x in lyrics for y in x]
 flattened_list = np.asarray([y for x in arr for y in x if len(y.split()) <= 30])
+print(flattened_list[0])
 tokenizer = Tokenizer()
 corpus = flattened_list
 # corpus = [' '.join(i) for i in flattened_list]
@@ -60,11 +61,11 @@ def get_sequence_of_tokens(corpus):
     total_words = len(tokenizer.word_index) + 1
     print(f'Number of words before downsampling: {total_words}')
     count_thres = 1
-    low_count_words = [w for w,c in tokenizer.word_counts.items() if c < count_thres]
-    for w in low_count_words:
-        del tokenizer.word_index[w]
-        del tokenizer.word_docs[w]
-        del tokenizer.word_counts[w]
+    #low_count_words = [w for w,c in tokenizer.word_counts.items() if c < count_thres]
+    #for w in low_count_words:
+    #    del tokenizer.word_index[w]
+    #    del tokenizer.word_docs[w]
+    #    del tokenizer.word_counts[w]
     total_words = len(tokenizer.word_index) + 1
     print(f'Number of words after downsampling: {total_words}')
     # convert data to sequence of tokens
@@ -116,7 +117,6 @@ def pretrained_embedding_layer(word_to_vec_map, word_to_index):
         try:
             emb_matrix[idx, :] = word_vectors.get_vector(word)
         except KeyError:
-            print(word)
             emb_matrix[idx, :] = np.zeros(word_vectors.get_vector("cucumber").shape)
 
     # Step 3
@@ -156,7 +156,7 @@ X = LSTM(units=2048, return_sequences=True, batch_size=64, stateful=True)(embedd
 X = Dropout(rate=0.5)(X)
 # Propagate X trough another LSTM layer with 128-dimensional hidden state
 # The returned output should be a single hidden state, not a batch of sequences.
-X = LSTM(units=2048, return_sequences=False, stateful=True)(X)
+X = LSTM(units=2048, return_sequences=False)(X)
 # Add dropout with a probability of 0.5
 #X = BatchNormalization(axis=-1)(X)
 X = Dropout(rate=0.5)(X)

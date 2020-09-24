@@ -3,7 +3,7 @@ MAINTAINER Joel Stevens <joelstevens553@gmail.com>
 
 # install build utilities
 RUN apt-get update && \
-	apt-get install -y gcc make apt-transport-https ca-certificates build-essential
+	apt-get install gcc make apt-transport-https ca-certificates build-essential
 
 # check our python environment
 RUN python3 --version

@@ -20,17 +20,20 @@ class Lyrics:
         self.BATCH_SIZE = BATCH_SIZE
         self.VOCAB_SIZE = VOCAB_SIZE
         _t = Transform()
-        # data_dir = 'data/processed/verses.txt'
-        # with open(data_dir, "rb") as fp:   # Unpickling
-        #     lyrics = pickle.load(fp)
-        lyrics = _t.verse_lines
+        data_dir = 'data/processed/verses.txt'
+        with open(data_dir, "rb") as fp:   # Unpickling
+            lyrics = pickle.load(fp)
+
+        # lyrics = _t.verse_lines
+        #self.lyrics = lyrics
         # [print(i) for i in lyrics]
         # lyrics = [' \n '.join(tokenizer.tokenize(i)) for i in lyrics]
         # lyrics = np.array(lyrics)
-        # arr = [[j for j in i.split(' \n ') if len(j) > 1 and '\n\n' != j] for i in list(np.array(lyrics)) if len(i.split(' \n ')) > 0]
-        flattened_list = [y for x in lyrics for y in x]
-        
-        self.target = flattened_list[::2]
+        arr = [[j for j in i.split(' \n ') if len(j) > 1 and '\n\n' != j] for i in list(np.array(lyrics)) if len(i.split(' \n ')) > 0]
+        flattened_list = [y for x in arr for y in x if len(y.split()) <= 30]
+        #flattened_list = [y for x in lyrics for y in x]
+        self.lyrics = flattened_list
+        self.target = flattened_list[0::2]
         self.train = flattened_list[1::2]
 
     def build(self, pad_shape=40):
@@ -108,7 +111,7 @@ class Lyrics:
         self.idx2char = idx2char
         text_as_int = np.array([char2idx[c] for c in text])
 
-        seq_length = 100
+        seq_length = 500
         examples_per_epoch = len(text)//(seq_length+1)
 
         # Create training examples / targets

@@ -78,9 +78,9 @@ target/
 *.json
 
 # exclude data from source control by default
-/src/data/tensorboard/
-/data/*
-/src/data/*ckpt*
+src/data/tensorboard/
+data/*
+src/data/*ckpt*
 data/processed/songs/*
 *.mp3
 *.png
@@ -95,4 +95,10 @@ log/*
 nohup.out
 
 # data
+checkpoint/*
 data/*
+logs/*
+*.err
+nohup.out
+*.text
+transformers/*

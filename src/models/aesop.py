@@ -28,7 +28,7 @@ physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 today = date.today()
 # Load vectors directly from the file
-word_vectors = api.load("glove-twitter-25")
+word_vectors = api.load("glove-twitter-100")
 num_words = 10000
 # with open('configs/config.json','r') as cfgFile:
 #     cfg = json.load(cfgFile)
@@ -45,16 +45,16 @@ _t = Transform()
 lyrics = _t.verse_lines
 print(lyrics[0])
 arr = np.array(lyrics)
-# arr = [[clean_text(j) for j in i.split(' \n ') if len(j) > 1 and '\n\n' != j] for i in list(np.array(lyrics)) if len(i.split(' \n ')) > 0]
-print(arr[0])
+#arr = [[clean_text(j) for j in i.split(' \n ') if len(j) > 1 and '\n\n' != j] for i in list(np.array(lyrics)) if len(i.split(' \n ')) > 0]
+#print(arr[0])
 
 # np.random.shuffle(arr)
-# flattened_list = [y for x in lyrics for y in x]
-flattened_list = np.asarray([y for x in arr for y in x if len(y.split()) <= 30])
+#flattened_list = [y for x in lyrics for y in x]
+flattened_list = np.asarray([clean_text(y) for x in arr for y in x if len(y.split()) <= 30])
 print(flattened_list[0])
 tokenizer = Tokenizer()
-corpus = flattened_list
-# corpus = [' '.join(i) for i in flattened_list]
+#corpus = flattened_list
+corpus = [' '.join(i) for i in flattened_list]
 def get_sequence_of_tokens(corpus):
     ## tokenization
     tokenizer.fit_on_texts(corpus)

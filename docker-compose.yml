@@ -4,7 +4,7 @@ services:
    notebook-server:
       build: .
       ports:
-         - "127.0.0.1::8888"
+         - "127.0.0.1::9999"
       volumes:
          - ./:/mnt
       entrypoint: bash -c "cd /mnt && jupyter notebook --NotebookApp.token='' --ip=0.0.0.0 --allow-root && /bin/bash"

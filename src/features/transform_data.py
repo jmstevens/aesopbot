@@ -7,6 +7,8 @@ import json
 import pickle
 import io
 import re, string
+from ftfy import fix_text
+import sentencepiece as spm
 pattern = re.compile('[\W_]+')
 
 
@@ -16,14 +18,14 @@ class Transform():
             self.data = json.load(f)
         # print(self.data)
         self.get_verses()
-        # self.clean_verses()
-        # self.segment_to_verses()
+        self.clean_verses()
+        self.segment_to_verses()
 
     def get_verses(self):
         verse_lines = list()
         for k in self.data['artists']:
             for v in k['songs']:
-                song = v['lyrics']
+                song = fix_text(v['lyrics'])
                 # song = pattern.sub(' ', v['lyrics'])
                 _l = list()
                 for i in song.splitlines():
@@ -110,13 +112,13 @@ class Transform():
         return verses
 
     def save(self):
-        with open("data/processed/verses.txt", "wb") as fp:   #Pickling
+        with open("data/processed/verses_test.txt", "wb") as fp:   #Pickling
             # fp.write(''.join(self.verses).strip('\'"'))
             pickle.dump(self.verses, fp)
         # with io.open("data/processed/verses.txt", 'w', encoding='utf8') as f:
         #     f.write(' '.join(self.verses))
 
 def main():
-    _t = Transform()
+    _t = Transform( )
 
     _t.save()

@@ -6,38 +6,60 @@ from configs import config
 import json
 import pickle
 import io
+import re, string
+pattern = re.compile('[\W_]+')
 
 
 class Transform():
     def __init__(self):
         with open('data/raw/artist_lyrics.json') as f:
             self.data = json.load(f)
+        # print(self.data)
         self.get_verses()
-        self.clean_verses()
-        self.segment_to_verses()
+        # self.clean_verses()
+        # self.segment_to_verses()
 
     def get_verses(self):
         verse_lines = list()
         for k in self.data['artists']:
             for v in k['songs']:
                 song = v['lyrics']
-                lines = song.splitlines()
-                for l in range(len(lines)):
-                    title = [x.lower() for x in lines[l].replace('[', '').replace(']', '').split()]
-                    if '[' in lines[l] and 'verse' in title:
-                        section_lines = []
-                        count = l + 1
-                        done = False
-                        while count < len(lines) and not done:
-                            if '[' not in lines[count]:
-                                if lines[count] != '':
-                                    section_lines.append(lines[count])
-                                count += 1
-                            else:
-                                done = True
-                        verse_lines.append(section_lines)
+                # song = pattern.sub(' ', v['lyrics'])
+                _l = list()
+                for i in song.splitlines():
+                    tmp = list()
+                    for j in i.split():
+                        tmp.append(pattern.sub('', j.lower()))
+                    _l.append(' '.join(tmp))
+                lines = [i for i in _l if i != '']
+
+                # for l in range(len(lines)):
+                #     title = [x.lower() for x in lines[l].replace('[', '').replace(']', '').split()]
+                #     # if '[' in lines[l] and 'verse' in title:
+                    #     section_lines = []
+                    #     count = l + 1
+                    #     done = False
+                    #     while count < len(lines) and not done:
+                    #         if '[' not in lines[count]:
+                    #             if lines[count] != '':
+                    #                 section_lines.append(lines[count])
+                    #             count += 1
+                    #         else:
+                    #             done = True
+                verse_lines.append(lines)
         self.verse_lines = verse_lines
         return verse_lines
+
+    # # def get_rhymes(self):
+    #     song_structures = {}
+    #     lines = self.verse_lines
+    #     rhyming_sections = []
+    #     for lines_ in lines:
+    #         rhyming_words = [line.split()[-2:] for line in lines_ ]
+    #         rhyming_sections.append(rhyming_words)
+    #     # song_structures[section] = rhyming_sections`
+    #
+    #     return rhyming_sections
 
     def clean_verses(self):
         verses_list = []
@@ -96,5 +118,5 @@ class Transform():
 
 def main():
     _t = Transform()
-    # print(_t.verses)
+
     _t.save()

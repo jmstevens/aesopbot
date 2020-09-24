@@ -40,8 +40,8 @@ clean:
 	rm -rf training_checkpoints/*
 	echo '' > nohup.out
 clean_data:
-	# rm -rf data/raw/*
-	# rm data/processed/*.csv
+	rm -rf data/raw/*
+	rm data/processed/*.csv
 	rm -rf data/processed/songs/*.txt
 
 ## Lint using flake8

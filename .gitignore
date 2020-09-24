@@ -79,7 +79,7 @@ target/
 
 # exclude data from source control by default
 /src/data/tensorboard/
-/data/raw/
+/data/*
 /src/data/*ckpt*
 data/processed/songs/*
 *.mp3
@@ -88,3 +88,11 @@ training_checkpoints/*
 # Mac OS-specific storage files
 .DS_Store
 
+# all logs
+log/*
+
+# nohup files
+nohup.out
+
+# data
+data/*

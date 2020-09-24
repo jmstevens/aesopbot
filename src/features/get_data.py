@@ -17,7 +17,7 @@ class Build():
         artists = list()
         for i in self.artist_list:
             try:
-                artists.append(self.genius.search_artist(i, max_songs=max_songs, get_full_info=False))
+                artists.append(self.genius.search_artist(i, max_songs=max_songs, get_full_info=True))
             except:
                 pass
             #self.artists = [self.genius.search_artist(i, get_full_info=False) for i in self.artist_list]

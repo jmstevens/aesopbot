@@ -3,6 +3,7 @@ argon2-cffi @ file:///tmp/build/80754af9/argon2-cffi_1596828493937/work
 astunparse==1.6.3
 attrs @ file:///tmp/build/80754af9/attrs_1600298409949/work
 backcall==0.2.0
+beautifulsoup4==4.6.0
 bleach @ file:///tmp/build/80754af9/bleach_1600439572647/work
 blinker==1.4
 brotlipy==0.7.0
@@ -39,6 +40,7 @@ jupyter-console @ file:///tmp/build/80754af9/jupyter_console_1598884538475/work
 jupyter-core==4.6.3
 Keras-Preprocessing==1.1.0
 kiwisolver==1.2.0
+lyricsgenius==2.0.0
 Markdown @ file:///tmp/build/80754af9/markdown_1597433240441/work
 MarkupSafe==1.1.1
 matplotlib==3.3.2

@@ -8,7 +8,7 @@ PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BUCKET = hiphopbot
 PROFILE = default
 PROJECT_NAME = aesopbot
-PYTHON_INTERPRETER = python
+PYTHON_INTERPRETER = python3
 
 ifeq (,$(shell which conda))
 HAS_CONDA=False
@@ -69,7 +69,7 @@ create_environment:
 ifeq (True,$(HAS_CONDA))
 		@echo ">>> Detected conda, creating conda environment."
 ifeq (3,$(findstring 3,$(PYTHON_INTERPRETER)))
-	conda create --name $(PROJECT_NAME) python=3
+	conda create --name $(PROJECT_NAME) python=3 tensorflow-gpu jupyter pandas nltk tensorboard 
 else
 	conda create --name $(PROJECT_NAME) python=2.7
 endif

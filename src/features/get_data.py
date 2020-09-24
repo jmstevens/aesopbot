@@ -3,6 +3,7 @@ from configs import config
 from src.features.genius.artist import Artist
 from src.features.genius.song import Song
 import json
+import lyricsgenius
 
 class Build():
     """Wrapper for downloading and saving lyrics for a list of artists"""
@@ -13,13 +14,17 @@ class Build():
         self.genius = Genius(self.cfg['client_access_token'])
 
     def build_artist(self, max_songs=None):
-        if max_songs:
-            self.artists = [self.genius.search_artist(i, max_songs=max_songs) for i in self.artist_list]
-        else:
-            self.artists = [self.genius.search_artist(i) for i in self.artist_list]
+        artists = list()
+        for i in self.artist_list:
+            try:
+                artists.append(self.genius.search_artist(i, max_songs=max_songs, get_full_info=True))
+            except:
+                pass
+            #self.artists = [self.genius.search_artist(i, get_full_info=False) for i in self.artist_list]
+        self.artists = artists
 
     def save(self):
-        self.genius.save_artists(self.artists)
+        self.genius.save_artists(self.artists,overwrite=True)
 
 def main():
     with open('configs/config.json','r') as cfgFile:

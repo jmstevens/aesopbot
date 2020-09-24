@@ -9,20 +9,60 @@ import tensorflow as tf
 import boto3
 import json
 import asyncio
-
-from src.models.rnn_model import RNNModel
-from src.features.build import Provider
-
+import random
+import src.models.aesop_gpt2 as gpt2
+from transformers import GPT2Model, GPT2Config, GPT2Tokenizer
+import pickle
+import math
+import tensorflow
+import tensorflow as tf
+import tensorflow_datasets as tfds
+import tensorflow_addons as tfa
+import json
+import os
+import time
+from ftfy import fix_text
+#:os.chdir('../')
+import pickle
+import numpy as np
+import string, os
+from gensim.models import KeyedVectors
+import gensim.downloader as api
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, Input, Dropout, LSTM, Activation, Bidirectional
+from tensorflow.keras.layers import Embedding
+from tensorflow.keras.preprocessing import sequence
+from tensorflow.keras.initializers import glorot_uniform
+from tensorflow.keras.callbacks import LambdaCallback, ModelCheckpoint
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+import tensorflow.keras.utils as ku
+from sklearn.model_selection import train_test_split
+import random
+import sys
+from datetime import date
+from collections import Counter
+import matplotlib.pyplot as plt
+from src.features.build import Lyrics
+from src.features.transform_data import Transform
+from random import shuffle
+from tensorflow.python.framework import tensor_shape
+from tokenizers import CharBPETokenizer, BertWordPieceTokenizer
+from transformers import GPT2Model, GPT2Config, GPT2Tokenizer
+# physical_devices = tf.config.list_physical_devices('GPU')
+# tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
+# from src.features.build import Provider
+# model = inference()
 description = '''Bot for aesop rock'''
 bot = commands.Bot(command_prefix='?', description=description)
 client = discord.Client()
-client.close()
+# client.close()
 
 
 @bot.event
 async def on_ready():
-    global model
-    global data_reader
+    # global model
+    # global data_reader
     print('Logged in as')
     print(bot.user.name)
     print(bot.user.id)
@@ -95,68 +135,94 @@ async def gif(*term: str):
     _gif = Gif(term, 50).random()
     await bot.say(_gif)
 
-@bot.command()
-async def freestyle_topic(*term: str):
+@bot.command(name='freestyle_topic')
+async def freestyle_topic(ctx, context: str, seq_len: int, temperature: float, top_k: int,top_p: float):
     """Aesop Raps about a specific topic"""
-    global model
-    global data_reader
-    print(term)
-    term = "".join(list(term))
-    # if '|' in term:
-    #     _t_split = term.split('|')
-    #     term = _t_split[0]
-    #     temperature = float(_t_split[1].replace(' ',''))
-    #     num_out = int(_t_split[2].replace(' ',''))
-    # else:
-    #     temperature = .9
-    print(term)
-    sample = generate_text(model, term, .95, 1000)
-    # sample = model.generate(data_reader, priming_text=term, sample=True, num_out=num_out, temperature=temperature)
-    # sample = '\n'.join([' '.join(i.split()) for i in sample.split('\n')])
+    # global data_reader
+    # print(term)
+    term = "".join(list(context))
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-xl')
+    special_tokens_dict = {'eos_token':'<END>','sep_token':'<NEWLINE>','bos_token':'<START>'}
+    num_added_toks = tokenizer.add_special_tokens(special_tokens_dict)
 
-    await bot.say(sample)
-
-@bot.command()
-async def freestyle_random():
-    """Aesop Raps: Random Aesop lyrics are fed in to seed the generator"""
-    global model
-    global data_reader
+    model = gpt2.Gpt2(6, 768, 8, 768, 128, vocab_size=tokenizer.vocab_size+3, tokenizer=tokenizer, optimizer="adam")#.load_model(filepath='checkpoint')
+    model.create_optimizer()
+    model.create_checkpoint_manager('checkpoint_longer')
+    # model.create_summary_writer('logs')
+    # model = model.load_model(filepath='checkpoint')
+    # global data_reader
     # print(random.random(data_reader.lyrics))
-    sample = generate_text(model, "im only nineteen but my mind is older", .95, 1000)
+    sample = model.sample_sequence(seq_len, context=context,temperature=temperature,top_k=top_k,top_p=top_p,nucleus_sampling=True)
     #sample = model.generate(data_reader, priming_text="hip hop ", sample=True, num_out=2000, temperature=.4)
+    del model
 
-    await bot.say(sample)
+    await ctx.send(sample)
 
-@bot.command()
-async def aesop_stats(*term: str):
-    global model
-    global data_reader
-    stats = dict()
-    stats['model_info'] = model.__dict__
-    stats['iterator_info'] = model.__dict__
-    print(term)
-    if not isinstance(term, tuple):
-        await bot.say("I'm just a dumb bot right now.\nA real normie.\nA real yitbosy fucker.\n.\nsBut....\n...\n....\nI can only hand a single argument.\n\n\n...\n...BRO!")
-    else:
-        if len(term) > 1 and len(term) < 3:
-            if term[0] == 'listparams':
-                print(list(stats.keys()))
-                if term[1] == 'model':
-                    await bot.say(stats['model_info'])
-                elif term[1] == 'iterator':
-                    await bot.say(stats['iterator_info'])
-                else:
-                    print(list(stats.keys()))
-                    await bot.say("Pick from either {0} or {1}".format(stats.keys()))
-            elif term[0] == "list":
-                try:
-                    config = stats[term[1]]
-                    await bot.say(config)
-                except KeyError:
-                    await bot.say("Hey yo thats not a parameter my brain is not familiar with\nYou should try ?listparams")
-        else:
-            await bot.say("Idk man. You're on your own.\nYou do know I have documentaion right?.\nTry ?help")
 
+@bot.command(name='freestyle_random')
+async def freestyle_random(ctx, seq_len: int, temperature: float, top_k: int,top_p: float):
+    """Aesop Raps: Random Aesop lyrics are fed in to seed the generator"""
+    data_dir = 'data/processed/verses.txt'
+    with open(data_dir, "rb") as fp:   # Unpickling
+        lyrics = pickle.load(fp)
+    arr = [' <NEWLINE> '.join([j for j in i.split(' \n ') if len(j) > 1 and '\n\n' != j]) for i in list(np.array(lyrics)) if len(i.split(' \n ')) > 0]#tokenizer = BertWordPieceTokenizer()
+    #tokenizer.train(['data/processed/verses_encoded.txt'])
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-xl')
+    special_tokens_dict = {'eos_token':'<END>','sep_token':'<NEWLINE>','bos_token':'<START>'}
+    num_added_toks = tokenizer.add_special_tokens(special_tokens_dict)
+    print(tokenizer.encode(' <NEWLINE> '))
+    tokenizer.save_pretrained('src/data/tokenizers')
+    dataset = list()
+    for verse in arr:
+        tmp = list()
+        verse = ' <START> ' + verse + ' <END> '
+        verse_split = verse.split(' <NEWLINE> ')
+        for line in verse_split:
+            tmp = tmp + tokenizer.encode(line + ' <NEWLINE>', add_prefix_space=True)
+        if tmp:
+            dataset.append(tmp)
+    context = random.choice(dataset)[:25]
+    model = gpt2.Gpt2(12, 768, 16, 768, 16, vocab_size=tokenizer.vocab_size+3, tokenizer=tokenizer, optimizer="adam")
+    model.create_optimizer()
+    model.create_checkpoint_manager('checkpoint_long')
+    model.create_summary_writer('logs')
+    # global data_reader
+    # print(random.random(data_reader.lyrics))
+    sample = model.sample_sequence(300, context=context,temperature=temperature,top_k=top_k,top_p=top_p,nucleus_sampling=True)
+    #sample = model.generate(data_reader, priming_text="hip hop ", sample=True, num_out=2000, temperature=.4)
+    del model
+    await ctx.send(sample)
+
+# @bot.command()
+# async def aesop_stats(*term: str):
+#     global model
+#     # global data_reader
+#     stats = dict()
+#     stats['model_info'] = model.__dict__
+#     stats['iterator_info'] = model.__dict__
+#     print(term)
+#     if not isinstance(term, tuple):
+#         await bot.say("I'm just a dumb bot right now.\nA real normie.\nA real yitbosy fucker.\n.\nsBut....\n...\n....\nI can only hand a single argument.\n\n\n...\n...BRO!")
+#     else:
+#         if len(term) > 1 and len(term) < 3:
+#             if term[0] == 'listparams':
+#                 print(list(stats.keys()))
+#                 if term[1] == 'model':
+#                     await bot.say(stats['model_info'])
+#                 elif term[1] == 'iterator':
+#                     await bot.say(stats['iterator_info'])
+#                 else:
+#                     print(list(stats.keys()))
+#                     await bot.say("Pick from either {0} or {1}".format(stats.keys()))
+#             elif term[0] == "list":
+#                 try:
+#                     config = stats[term[1]]
+#                     await bot.say(config)
+#                 except KeyError:
+#                     await bot.say("Hey yo thats not a parameter my brain is not familiar with\nYou should try ?listparams")
+#         else:
+#             await bot.say("Idk man. You're on your own.\nYou do know I have documentaion right?.\nTry ?help")
+#
 
 
 
